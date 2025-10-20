@@ -11,15 +11,15 @@ class _RoleState extends State<Role> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ThemeData().scaffoldBackgroundColor,
+      backgroundColor: Color(0xFF26A69A),
       body: ListView(
         children: [
           SizedBox(height: 100,),
 
           Center(
             child: Text("Choose Your Role",style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+              color: Color(0xFFFFFFFF),
+              fontWeight: FontWeight.w900,
               fontSize:30
             ),),
           ),
@@ -41,7 +41,7 @@ class _RoleState extends State<Role> {
                 width: 100,
               
                 decoration: BoxDecoration(
-                    color: Color(0x80374151),
+                    color: Color(0xFFFFFFFF),
                   border: Border.all(color: Colors.white,width: 2),
                   borderRadius: BorderRadius.circular(10)
                 ),
@@ -53,17 +53,17 @@ class _RoleState extends State<Role> {
                   children: [
                     
               
-                    Icon(Icons.groups,size: 60,color: Colors.white,),
+                    Icon(Icons.groups,size: 60,color: Color(0xFFFF7043),),
               
                     Text("Player",style: TextStyle(
-                      color: Colors.white,
+                      color: Color(0xFF4E342E),
                       fontSize: 28,
                       fontWeight: FontWeight.bold
                     ),),
               
                     Text("Find and book venues for your next match",style: TextStyle(
                       fontSize: 15,
-                      color: Colors.white
+                      color: Color(0xFF757575)
                     ),
               
                     textAlign: TextAlign.center,)
@@ -91,7 +91,7 @@ class _RoleState extends State<Role> {
                 width: 100,
 
                 decoration: BoxDecoration(
-                  color: Color(0x80374151),
+                  color: Color(0xFFFFFFFF),
                     border: Border.all(color: Colors.white,width: 2),
                     borderRadius: BorderRadius.circular(10)
                 ),
@@ -99,15 +99,15 @@ class _RoleState extends State<Role> {
                 child: Column(
                     spacing: 10,
                   children: [
-                    Icon(Icons.person,size: 60,color: Colors.white,),
+                    Icon(Icons.person,size: 60,color: Color(0xFFFF7043),),
                     Text("Manager",style: TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFF4E342E),
                         fontSize: 28,
                         fontWeight: FontWeight.bold
                     ),),
                     Text("List your venue and manage your bookings",style: TextStyle(
                         fontSize: 15,
-                        color: Colors.white
+                        color: Color(0xFF757575)
 
                     ),
                       textAlign: TextAlign.center,)
