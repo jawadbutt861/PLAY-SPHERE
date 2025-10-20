@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
+
 class Login extends StatefulWidget {
-  const Login({super.key});
+  const Login({super.key,});
 
   @override
   State<Login> createState() => _LoginState();
@@ -10,13 +11,12 @@ class Login extends StatefulWidget {
 class _LoginState extends State<Login> {
 
   final formkey = GlobalKey<FormState>();
-
   TextEditingController eMail = TextEditingController();
   TextEditingController password = TextEditingController();
 
   bool showPass = true;
   @override
-  Widget build(BuildContext context) { 
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFF26A69A),
       body: Form(
@@ -140,9 +140,6 @@ class _LoginState extends State<Login> {
                     if(value == null || value.isEmpty){
                       return "Please enter password";
                     }
-                    if(value.length != 8){
-                      return "Password must be 8 characters or more";
-                    }
                     return null;
                   },
                 ),
@@ -162,8 +159,11 @@ class _LoginState extends State<Login> {
                   child: ElevatedButton(
                       onPressed: (){
                         if(formkey.currentState!.validate()){
-                          return null;
+                          return;
                         }
+
+                       
+
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFFFF7043),
@@ -189,7 +189,7 @@ class _LoginState extends State<Login> {
                 Center(
                   child: ElevatedButton(
                       onPressed: (){
-                        print("To Login Page");
+                        Navigator.pop(context);
                         },
             
                       style: ElevatedButton.styleFrom(

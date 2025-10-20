@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
 class Role extends StatefulWidget {
-  const Role({super.key});
+
+  const Role({super.key,});
 
   @override
   State<Role> createState() => _RoleState();
 }
 
 class _RoleState extends State<Role> {
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,8 +32,7 @@ class _RoleState extends State<Role> {
           GestureDetector(
 
             onTap: (){
-              print("Clicked");
-
+              Navigator.pushNamed(context, '/UserSignUp',);
             },
 
             child: Flexible(
@@ -78,7 +80,7 @@ class _RoleState extends State<Role> {
           GestureDetector(
 
             onTap: (){
-              print("Clicked");
+              Navigator.pushNamed(context, '/ManagerSignUp',);
             },
 
             child: Flexible(

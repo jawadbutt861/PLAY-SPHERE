@@ -314,8 +314,10 @@ class _SignupState extends State<ManagerSignup> {
                     child: ElevatedButton(
                         onPressed: (){
                           if(formkey.currentState!.validate()){
-                           return ;
+                            Navigator.pushNamed(context, '/LogIn');
+                            return;
                           }
+
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xFFFF7043),
@@ -342,7 +344,7 @@ class _SignupState extends State<ManagerSignup> {
                       ),),
                       TextButton(
                           onPressed: (){
-            
+                            Navigator.pushNamed(context, '/LogIn');
                           },
                           child: Text("Sign in",style: TextStyle(
                               fontSize: 16,
