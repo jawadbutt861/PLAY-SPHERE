@@ -1,10 +1,7 @@
-import 'package:f_y_p/screens/manager signup/manager_signup.dart';
-import 'package:f_y_p/screens/role/role.dart';
-import 'package:f_y_p/screens/user home/user_home.dart';
-import 'package:f_y_p/screens/login/login.dart';
-import 'package:f_y_p/screens/user signup/user_signup.dart';
-import 'package:f_y_p/screens/user%20home/user_home.dart';
-import 'package:flutter/material.dart';
+
+import "package:flutter/material.dart";
+
+import 'screens/role/role.dart';
 
 void main(){
   runApp(MyApp());
@@ -16,8 +13,37 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: ThemeData(
+        textTheme: TextTheme(
+        bodyLarge: TextStyle(color: Color(0xFF1A1A1A)),
+        bodyMedium: TextStyle(color: Color(0xFF616161)),
+        headlineSmall: TextStyle(color: Color(0xFF0D47A1), 
+        fontWeight: FontWeight.bold),
+  ),
+
+  scaffoldBackgroundColor: Color(0xFFF5F5F5),
+  appBarTheme: AppBarTheme(
+        backgroundColor: Color(0xFF0D47A1),
+        foregroundColor: Colors.white,
+         elevation: 0,
+  ),
+
+  colorScheme: ColorScheme.light(
+    primary: Color(0xFF0D47A1),   // Royal Blue
+    secondary: Color(0xFFFF6F00), // Orange
+    tertiary: Color(0xFF00C853),  // Green
+    background: Color(0xFFF5F5F5),
+    surface: Colors.white,
+    onPrimary: Colors.white,
+    onSecondary: Colors.white,
+    onBackground: Colors.black,
+  ),
+
+
+
+      ),
       debugShowCheckedModeBanner: false,
-      home: UserSignup(),
+      home: Role(),
     );
   }
 }
