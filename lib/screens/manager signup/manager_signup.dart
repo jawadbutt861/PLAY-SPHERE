@@ -22,6 +22,8 @@ class _SignupState extends State<ManagerSignup> {
   TextEditingController mobileNo = TextEditingController();
   TextEditingController password = TextEditingController();
   TextEditingController role = TextEditingController();
+  TextEditingController venueName = TextEditingController();
+  TextEditingController venueLocation = TextEditingController();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -252,6 +254,109 @@ class _SignupState extends State<ManagerSignup> {
                       return null;
                     },
                   ),
+
+                  SizedBox(height: 30,),
+            
+                  TextFormField(
+                    controller: venueName,
+                    style: TextStyle(
+                      
+                      color: Colors.black,
+                      ),
+                    keyboardType: TextInputType.name,
+                    decoration: InputDecoration(
+                      filled: true,
+                      prefixIcon: Icon(Icons.business_outlined,size: 25,),
+                      prefixIconColor: Color(0xFFFF7043),
+                      fillColor: Color(0xFFFFFFFF),
+                      hintText: 'Enter Venue Name',
+                      hintStyle: TextStyle(
+                        color: Color(0xFF757575),
+                        fontSize: 16
+                      ),
+                      labelText: 'Venue Name',
+                      labelStyle: TextStyle(
+                        color: Color(0xFF757575)
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
+                        borderRadius: BorderRadius.circular(10)
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
+                        borderRadius: BorderRadius.circular(10)
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
+                          borderRadius: BorderRadius.circular(10)
+                      ),
+                      errorBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.redAccent,width: 2),
+                          borderRadius: BorderRadius.circular(10)
+                      ),
+            
+                    ),
+            
+            
+                    validator: (value){
+                      if(value == null || value.isEmpty){
+                        return "Please enter venue ";
+                      }
+                      return null;
+                    },
+                  ),
+
+                  SizedBox(height: 30,),
+            
+                  TextFormField(
+                    controller: venueLocation,
+                    style: TextStyle(
+                      
+                      color: Colors.black,
+                      ),
+                    keyboardType: TextInputType.name,
+                    decoration: InputDecoration(
+                      filled: true,
+                      prefixIcon: Icon(Icons.location_on,size: 25,),
+                      prefixIconColor: Color(0xFFFF7043),
+                      fillColor: Color(0xFFFFFFFF),
+                      hintText: 'Enter Venue Location',
+                      hintStyle: TextStyle(
+                        color: Color(0xFF757575),
+                        fontSize: 16
+                      ),
+                      labelText: 'Venue Location',
+                      labelStyle: TextStyle(
+                        color: Color(0xFF757575)
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
+                        borderRadius: BorderRadius.circular(10)
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
+                        borderRadius: BorderRadius.circular(10)
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
+                          borderRadius: BorderRadius.circular(10)
+                      ),
+                      errorBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.redAccent,width: 2),
+                          borderRadius: BorderRadius.circular(10)
+                      ),
+            
+                    ),
+            
+            
+                    validator: (value){
+                      if(value == null || value.isEmpty){
+                        return "Please enter location ";
+                      }
+                      return null;
+                    },
+                  ),
+            
             
                   SizedBox(height: 30,),
             

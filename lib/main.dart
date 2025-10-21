@@ -1,5 +1,6 @@
 
 import "package:f_y_p/screens/manager%20login/manager_login.dart";
+import "package:f_y_p/screens/user%20home/tournament/tournament%20form/tournament%20form.dart";
 import "package:f_y_p/screens/user%20login/user_login.dart";
 import "package:f_y_p/screens/manager%20home/manager_home.dart";
 import "package:f_y_p/screens/manager%20signup/manager_signup.dart";
@@ -27,6 +28,7 @@ class MyApp extends StatelessWidget {
         '/ManagerLogIn' : (context) => ManagerLogin(),
         '/UserHome' : (context) => Userhome(),
         '/ManagerHome' : (context) => Managerhome(),
+        '/TournamentForm' : (context) => TournamentForm(),
 
       },
       

@@ -60,7 +60,7 @@ class _TournamentState extends State<Tournament> {
                   ElevatedButton(
                     
                     onPressed: (){
-      
+                      Navigator.pushNamed(context, '/TournamentForm');
                     }, 
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFFFF7043),
