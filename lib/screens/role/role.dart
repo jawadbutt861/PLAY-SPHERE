@@ -43,7 +43,7 @@ class _RoleState extends State<Role> {
                 width: 100,
               
                 decoration: BoxDecoration(
-                    color: Color(0xFFFFFFFF),
+                    color: Color(0xFFFFFFFF).withAlpha(200),
                   border: Border.all(color: Colors.white,width: 2),
                   borderRadius: BorderRadius.circular(10)
                 ),
@@ -93,7 +93,7 @@ class _RoleState extends State<Role> {
                 width: 100,
 
                 decoration: BoxDecoration(
-                  color: Color(0xFFFFFFFF),
+                  color: Color(0xFFFFFFFF).withAlpha(200),
                     border: Border.all(color: Colors.white,width: 2),
                     borderRadius: BorderRadius.circular(10)
                 ),

@@ -1,3 +1,7 @@
+
+import 'package:f_y_p/screens/user%20home/booking/booking.dart';
+import 'package:f_y_p/screens/user%20home/home/home.dart';
+import 'package:f_y_p/screens/user%20home/tournament/tournament.dart';
 import 'package:flutter/material.dart';
 
 class Userhome extends StatefulWidget {
@@ -9,20 +13,27 @@ class Userhome extends StatefulWidget {
 
 class _HomeState extends State<Userhome> {
 
+List<Widget> userpages = [
+  Home(),
+  Booking(),
+  Tournament()
+];
+
   int index = 0;
   List<String> bottomNavItems = ["Home","Booking","Tournament"];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.white.withAlpha(250),
 
       appBar: AppBar(
         title: Text(bottomNavItems[index],style: TextStyle(
           color: Colors.white,
-          fontSize: 20
+          fontSize: 20,
         ),),
         backgroundColor: Color(0xFF26A69A),
+      
         actions: [
           PopupMenuButton(
 
@@ -72,7 +83,8 @@ class _HomeState extends State<Userhome> {
         ],
       ),
 
-
+      body:userpages[index],
+      
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Color(0xFF26A69A),
         // fixedColor: Color(0xFF00A8E8),
@@ -85,6 +97,7 @@ class _HomeState extends State<Userhome> {
           setState(() {
             index = value;
           });
+       
         },
         currentIndex: index,
         items: [
@@ -93,6 +106,7 @@ class _HomeState extends State<Userhome> {
             icon: Icon(Icons.home)
           ),
           BottomNavigationBarItem(
+              
               label: "Booking",
               icon: Icon(Icons.calendar_month)
           ),

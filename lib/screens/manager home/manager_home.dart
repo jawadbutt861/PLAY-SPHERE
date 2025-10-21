@@ -15,14 +15,14 @@ class _HomeState extends State<Managerhome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.white,
 
       appBar: AppBar(
         title: Text(bottomNavItems[index],style: TextStyle(
             color: Colors.white,
             fontSize: 20
         ),),
-        backgroundColor: Color(0x80374151),
+        backgroundColor: Color(0xFF26A69A),
         actions: [
           PopupMenuButton(
 
@@ -74,9 +74,9 @@ class _HomeState extends State<Managerhome> {
 
 
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Color(0x80374151),
+        backgroundColor: Color(0xFF26A69A),
         // fixedColor: Color(0xFF00A8E8),
-        selectedItemColor: Color(0xFF00A8E8),
+        selectedItemColor: Color(0xFFFFD54F),
         selectedLabelStyle: TextStyle(
             fontWeight: FontWeight.bold
         ),

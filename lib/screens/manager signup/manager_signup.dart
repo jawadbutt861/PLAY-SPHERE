@@ -39,7 +39,7 @@ class _SignupState extends State<ManagerSignup> {
             decoration: BoxDecoration(
               border: Border.all(color: Colors.white),
               borderRadius: BorderRadius.circular(20),
-              color: Colors.white
+              color: Colors.white.withAlpha(200)
             ),
             child: Form(
               key: formkey,
@@ -344,7 +344,7 @@ class _SignupState extends State<ManagerSignup> {
                       ),),
                       TextButton(
                           onPressed: (){
-                            Navigator.pushNamed(context, '/LogIn');
+                            Navigator.pushNamed(context, '/ManagerLogIn');
                           },
                           child: Text("Sign in",style: TextStyle(
                               fontSize: 16,

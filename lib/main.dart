@@ -1,9 +1,9 @@
 
-import "package:f_y_p/screens/login/login.dart";
+import "package:f_y_p/screens/manager%20login/manager_login.dart";
+import "package:f_y_p/screens/user%20login/user_login.dart";
 import "package:f_y_p/screens/manager%20home/manager_home.dart";
 import "package:f_y_p/screens/manager%20signup/manager_signup.dart";
 import "package:f_y_p/screens/role/role.dart";
-import "package:f_y_p/screens/routes/routes.dart";
 import "package:f_y_p/screens/user%20home/user_home.dart";
 import "package:f_y_p/screens/user%20signup/user_signup.dart";
 import "package:flutter/material.dart";
@@ -23,11 +23,13 @@ class MyApp extends StatelessWidget {
         '/' : (context) => Role(),
         '/ManagerSignUp' : (context) => ManagerSignup(),
         '/UserSignUp' : (context) => UserSignup(),
-        '/LogIn' : (context) => Login(),
+        '/UserLogIn' : (context) => UserLogin(),
+        '/ManagerLogIn' : (context) => ManagerLogin(),
         '/UserHome' : (context) => Userhome(),
-        '/ManagerHome' : (context) => Managerhome()
+        '/ManagerHome' : (context) => Managerhome(),
 
       },
+      
 
     );
   }

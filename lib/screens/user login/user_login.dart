@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 
-
-class Login extends StatefulWidget {
-  const Login({super.key,});
+class UserLogin extends StatefulWidget {
+  const UserLogin({super.key});
 
   @override
-  State<Login> createState() => _LoginState();
+  State<UserLogin> createState() => _UserLoginState();
 }
 
-class _LoginState extends State<Login> {
+class _UserLoginState extends State<UserLogin> {
 
-  final formkey = GlobalKey<FormState>();
+    final formkey = GlobalKey<FormState>();
   TextEditingController eMail = TextEditingController();
   TextEditingController password = TextEditingController();
 
@@ -24,7 +23,7 @@ class _LoginState extends State<Login> {
         child: Center(
           child: Container(
             decoration: BoxDecoration(
-              color:Color(0xFFFFFFFF),
+              color:Colors.white.withAlpha(200),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.white,width: 2)
             ),
@@ -140,6 +139,9 @@ class _LoginState extends State<Login> {
                     if(value == null || value.isEmpty){
                       return "Please enter password";
                     }
+                    if(value.length < 8){
+                      return "Invalid Password";
+                    }
                     return null;
                   },
                 ),
@@ -149,7 +151,7 @@ class _LoginState extends State<Login> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text("Forgot Password?",style: TextStyle(
-                      color: Colors.white
+                      color: Color(0xFF757575)
                     ),)
                   ],
                 ),
@@ -159,6 +161,7 @@ class _LoginState extends State<Login> {
                   child: ElevatedButton(
                       onPressed: (){
                         if(formkey.currentState!.validate()){
+                         Navigator.pushReplacementNamed(context, "/UserHome");
                           return;
                         }
 
@@ -212,6 +215,5 @@ class _LoginState extends State<Login> {
         ),
       ),
     );
-
   }
 }

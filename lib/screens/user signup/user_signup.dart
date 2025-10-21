@@ -39,7 +39,7 @@ class _SignupState extends State<UserSignup> {
             decoration: BoxDecoration(
               border: Border.all(color: Colors.white),
               borderRadius: BorderRadius.circular(20),
-              color: Colors.white
+              color: Colors.white.withAlpha(200)
             ),
             child: Form(
               key: formkey,
@@ -300,7 +300,7 @@ class _SignupState extends State<UserSignup> {
 
                           ),),
                           onPressed: (){
-                            Navigator.pushNamed(context, '/LogIn');
+                            Navigator.pushNamed(context, '/UserLogIn');
                           })
                     ],
                   )
