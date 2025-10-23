@@ -264,7 +264,7 @@ class _SignupState extends State<UserSignup> {
                     child: ElevatedButton(
                         onPressed: (){
                           if(formkey.currentState!.validate()){
-                            Navigator.pushNamed(context, '/LogIn');
+                            Navigator.pushReplacementNamed(context, '/LogIn');
                             return ;
                           }
 
@@ -300,7 +300,7 @@ class _SignupState extends State<UserSignup> {
 
                           ),),
                           onPressed: (){
-                            Navigator.pushNamed(context, '/UserLogIn');
+                            Navigator.pushReplacementNamed(context, '/UserLogIn');
                           })
                     ],
                   )

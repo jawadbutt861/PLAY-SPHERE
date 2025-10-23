@@ -32,7 +32,7 @@ class _RoleState extends State<Role> {
           GestureDetector(
 
             onTap: (){
-              Navigator.pushNamed(context, '/UserSignUp',);
+              Navigator.pushReplacementNamed(context, '/UserLogIn',);
             },
 
             child: Flexible(
@@ -80,7 +80,7 @@ class _RoleState extends State<Role> {
           GestureDetector(
 
             onTap: (){
-              Navigator.pushNamed(context, '/ManagerSignUp',);
+              Navigator.pushReplacementNamed(context, '/ManagerLogIn',);
             },
 
             child: Flexible(

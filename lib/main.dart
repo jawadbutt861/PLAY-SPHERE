@@ -1,11 +1,10 @@
 
 import "package:f_y_p/screens/manager%20login/manager_login.dart";
-import "package:f_y_p/screens/user%20home/tournament/tournament%20form/tournament%20form.dart";
 import "package:f_y_p/screens/user%20login/user_login.dart";
 import "package:f_y_p/screens/manager%20home/manager_home.dart";
 import "package:f_y_p/screens/manager%20signup/manager_signup.dart";
 import "package:f_y_p/screens/role/role.dart";
-import "package:f_y_p/screens/user%20home/user_home.dart";
+import "package:f_y_p/screens/user%20pages/user_main.dart";
 import "package:f_y_p/screens/user%20signup/user_signup.dart";
 import "package:flutter/material.dart";
 
@@ -26,9 +25,9 @@ class MyApp extends StatelessWidget {
         '/UserSignUp' : (context) => UserSignup(),
         '/UserLogIn' : (context) => UserLogin(),
         '/ManagerLogIn' : (context) => ManagerLogin(),
-        '/UserHome' : (context) => Userhome(),
+        '/UserMain' : (context) => UserMain(),
         '/ManagerHome' : (context) => Managerhome(),
-        '/TournamentForm' : (context) => TournamentForm(),
+     
 
       },
       

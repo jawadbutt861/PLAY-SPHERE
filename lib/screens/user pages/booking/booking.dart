@@ -10,10 +10,6 @@ class Booking extends StatefulWidget {
 class _BookingState extends State<Booking> {
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        Text("Hello Booking")
-      ],
-    );
+    return const Placeholder();
   }
 }

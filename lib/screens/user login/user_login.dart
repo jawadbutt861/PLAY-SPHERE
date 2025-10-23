@@ -161,7 +161,7 @@ class _UserLoginState extends State<UserLogin> {
                   child: ElevatedButton(
                       onPressed: (){
                         if(formkey.currentState!.validate()){
-                         Navigator.pushReplacementNamed(context, "/UserHome");
+                         Navigator.pushReplacementNamed(context, "/UserMain");
                           return;
                         }
 
@@ -192,7 +192,7 @@ class _UserLoginState extends State<UserLogin> {
                 Center(
                   child: ElevatedButton(
                       onPressed: (){
-                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/UserSignUp');
                         },
             
                       style: ElevatedButton.styleFrom(
