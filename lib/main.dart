@@ -4,6 +4,7 @@ import "package:f_y_p/screens/user%20login/user_login.dart";
 import "package:f_y_p/screens/manager%20home/manager_home.dart";
 import "package:f_y_p/screens/manager%20signup/manager_signup.dart";
 import "package:f_y_p/screens/role/role.dart";
+import "package:f_y_p/screens/user%20pages/categories/categories.dart";
 import "package:f_y_p/screens/user%20pages/user_main.dart";
 import "package:f_y_p/screens/user%20signup/user_signup.dart";
 import "package:flutter/material.dart";
@@ -27,6 +28,7 @@ class MyApp extends StatelessWidget {
         '/ManagerLogIn' : (context) => ManagerLogin(),
         '/UserMain' : (context) => UserMain(),
         '/ManagerHome' : (context) => Managerhome(),
+        '/Categories' : (context) => Categories(),
      
 
       },

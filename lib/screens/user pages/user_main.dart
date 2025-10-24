@@ -11,16 +11,19 @@ class UserMain extends StatefulWidget {
 }
 
 class _UserMainState extends State<UserMain> {
+
       int index = 0;
   List<Widget> userpages = [
     Home(),
     Booking(),
     Tournament()
   ];
+
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
-       backgroundColor: Colors.white.withAlpha(250),
+       backgroundColor: Colors.white,
 
       appBar: AppBar(
         
@@ -55,6 +58,7 @@ class _UserMainState extends State<UserMain> {
       body:userpages[index],
       
       bottomNavigationBar: BottomNavigationBar(
+         currentIndex: index,
         backgroundColor: Color(0xFF26A69A),
         selectedItemColor: Color(0xFFFFD54F),
         selectedLabelStyle: TextStyle(
@@ -67,7 +71,7 @@ class _UserMainState extends State<UserMain> {
           });
        
         },
-        currentIndex: index,
+       
         items: [
           BottomNavigationBarItem(
             label: "Home",
