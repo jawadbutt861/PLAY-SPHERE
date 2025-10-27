@@ -1,475 +1,270 @@
-// import 'package:flutter/gestures.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
-// import 'package:flutter/cupertino.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ManagerSignup extends StatefulWidget {
   const ManagerSignup({super.key});
 
   @override
-  State<ManagerSignup> createState() => _SignupState();
+  State<ManagerSignup> createState() => _ManagerSignupState();
 }
 
-class _SignupState extends State<ManagerSignup> {
+class _ManagerSignupState extends State<ManagerSignup> {
+  final formKey = GlobalKey<FormState>();
   bool showPass = true;
-  int selected = 0;
 
+  final TextEditingController fullName = TextEditingController();
+  final TextEditingController email = TextEditingController();
+  final TextEditingController cnic = TextEditingController();
+  final TextEditingController mobileNo = TextEditingController();
+  final TextEditingController password = TextEditingController();
+  final TextEditingController venueName = TextEditingController();
+  final TextEditingController venueLocation = TextEditingController();
 
-  final formkey = GlobalKey<FormState>();
+  final ImagePicker picker = ImagePicker();
+  List<XFile> selectedImages = [];
 
-  TextEditingController fullName = TextEditingController();
-  TextEditingController eMail = TextEditingController();
-  TextEditingController cnic = TextEditingController();
-  TextEditingController mobileNo = TextEditingController();
-  TextEditingController password = TextEditingController();
-  TextEditingController role = TextEditingController();
-  TextEditingController venueName = TextEditingController();
-  TextEditingController venueLocation = TextEditingController();
+  Future<void> pickImages() async {
+    try {
+      final List<XFile> images = await picker.pickMultiImage();
+
+      if (images.isNotEmpty) {
+        setState(() {
+          selectedImages = images.take(5).toList(); // limit to 5
+        });
+      }
+    } catch (e) {
+      print("Error picking images: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF26A69A),
-
-
-      body: Flexible(
-        
-          flex: 1,
-        child: Center(
+      backgroundColor: const Color(0xFF26A69A),
+      body: Center(
+        child: SingleChildScrollView(
           child: Container(
-            margin: EdgeInsets.all(20),
-            height: 700,
+            margin: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(20),
             width: 400,
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.white),
+              color: Colors.white.withAlpha(230),
               borderRadius: BorderRadius.circular(20),
-              color: Colors.white.withAlpha(200)
+              border: Border.all(color: Colors.white),
             ),
             child: Form(
-              key: formkey,
-              child: ListView(
-              padding: EdgeInsets.all(20),
-            
+              key: formKey,
+              child: Column(
                 children: [
-            
-                  SizedBox(height: 20,),
-            
-                  Center(
-                    child: Text("Manager Sign Up",style: TextStyle(
-                        color: Color(0xFF4E342E),
-                        fontSize: 25,
-                        fontWeight: FontWeight.bold
-                    ),),
+                  const Text(
+                    "Manager Sign Up",
+                    style: TextStyle(
+                      color: Color(0xFF4E342E),
+                      fontSize: 25,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-            
-                  SizedBox(height: 50,),
-            
-                  TextFormField(
+                  const SizedBox(height: 30),
+
+                  // --- Full Name ---
+                  _buildTextField(
                     controller: fullName,
-                    style: TextStyle(
-                      
-                      color: Colors.black,
-                      ),
-                    keyboardType: TextInputType.name,
-                    decoration: InputDecoration(
-                      filled: true,
-                      prefixIcon: Icon(Icons.person,size: 25,),
-                      prefixIconColor: Color(0xFFFF7043),
-                      fillColor: Color(0xFFFFFFFF),
-                      hintText: 'Enter Your Full Name',
-                      hintStyle: TextStyle(
-                        color: Color(0xFF757575),
-                        fontSize: 16
-                      ),
-                      labelText: 'Full Name',
-                      labelStyle: TextStyle(
-                        color: Color(0xFF757575)
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                        borderRadius: BorderRadius.circular(10)
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                        borderRadius: BorderRadius.circular(10)
-                      ),
-                      focusedErrorBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-                      errorBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.redAccent,width: 2),
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-            
-                    ),
-            
-            
-                    validator: (value){
-                      if(value == null || value.isEmpty){
-                        return "Please enter fullname";
-                      }
+                    label: 'Full Name',
+                    icon: Icons.person,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Enter full name' : null,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // --- Email ---
+                  _buildTextField(
+                    controller: email,
+                    label: 'Email',
+                    icon: Icons.email_outlined,
+                    keyboard: TextInputType.emailAddress,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Enter email';
+                      if (!v.contains('@')) return 'Invalid email';
                       return null;
                     },
                   ),
-            
-                  SizedBox(height: 30,),
-            
-                  TextFormField(
-                    controller: eMail,
-                    style: TextStyle(color: Colors.black),
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                        prefixIcon: Icon(Icons.email_outlined,size: 25,),
-                        prefixIconColor: Color(0xFFFF7043),
-                        filled: true,
-                        fillColor: Colors.white,
-                        hintText: 'Enter Your Email Address',
-                        hintStyle: TextStyle(
-                            color: Color(0xFF757575)
-                        ),
-                        labelText: 'Email',
-                        labelStyle: TextStyle(
-                            color: Color(0xFF757575)
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                            borderRadius: BorderRadius.circular(10)
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                            borderRadius: BorderRadius.circular(10)
-                        ),
-                      focusedErrorBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-                      errorBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.redAccent,width: 2),
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-                    ),
-                    validator: (value){
-                      if(value == null || value.isEmpty){
-                        return "Please enter email";
-                      }
-                      if(!value.contains('@')){
-                        return "Invalid email";
-                      }
+                  const SizedBox(height: 20),
+
+                  // --- CNIC ---
+                  _buildTextField(
+                    controller: cnic,
+                    label: 'CNIC',
+                    icon: Icons.contact_mail,
+                    keyboard: TextInputType.number,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Enter CNIC';
+                      if (v.length != 13) return 'Invalid CNIC';
                       return null;
                     },
                   ),
-            
-                  SizedBox(height: 30,),
+                  const SizedBox(height: 20),
 
-                  TextFormField(
-              
-              controller: cnic,
-              style: TextStyle(color: Colors.black),
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                prefixIcon: Icon(Icons.contact_mail,size: 25,),
-                prefixIconColor: Color(0xFFFF7043),
-                filled: true,
-                fillColor: Colors.white,
-                hintText: 'Enter CNIC (without dashes)',
-                hintStyle: TextStyle(
-                    color: Color(0xFF757575)
-                ),
-                labelText: 'CNIC',
-                labelStyle: TextStyle(
-                    color: Color(0xFF757575)
-                ),
-                enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                    borderRadius: BorderRadius.circular(10)
-                ),
-                focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                    borderRadius: BorderRadius.circular(10)
-                ),
-                focusedErrorBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                    borderRadius: BorderRadius.circular(10)
-                ),
-                errorBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.redAccent,width: 2),
-                    borderRadius: BorderRadius.circular(10)
-                ),
-              ),
-              
-              validator: (value){
-                if(value == null || value.isEmpty){
-                  return "Please enter cnic";
-                }
-                if(value.length != 13){
-                  return "Invalid cnic";
-                }
-                return null;
-              },
-            ),
-
-
-                  SizedBox(height: 30,),
-            
-                  TextFormField(
+                  // --- Mobile No ---
+                  _buildTextField(
                     controller: mobileNo,
-                    style: TextStyle(color: Colors.black),
-                    keyboardType: TextInputType.number ,
-                    decoration: InputDecoration(
-                        prefixIcon: Icon(Icons.phone,size: 25,),
-                        prefixIconColor: Color(0xFFFF7043),
-                        filled: true,
-                        fillColor: Colors.white,
-                        hintText: 'e.g.,0312-4567098',
-                        hintStyle: TextStyle(
-                            color: Color(0xFF757575)
-                        ),
-                        labelText: 'Mobile No',
-                        labelStyle: TextStyle(
-                            color: Color(0xFF757575)
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                            borderRadius: BorderRadius.circular(10)
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                            borderRadius: BorderRadius.circular(10)
-                        ),
-                      focusedErrorBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-                      errorBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.redAccent,width: 2),
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-                    ),
-                    validator: (value){
-                      if(value == null || value.isEmpty){
-                        return "Please enter mobile number";
-                      }
-                      if(value.length != 11){
-                        return "Invalid mobile number";
-                      }
+                    label: 'Mobile No',
+                    icon: Icons.phone,
+                    keyboard: TextInputType.phone,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Enter mobile number';
+                      if (v.length != 11) return 'Invalid number';
                       return null;
                     },
                   ),
+                  const SizedBox(height: 20),
 
-                  SizedBox(height: 30,),
-            
-                  TextFormField(
+                  // --- Venue Name ---
+                  _buildTextField(
                     controller: venueName,
-                    style: TextStyle(
-                      
-                      color: Colors.black,
-                      ),
-                    keyboardType: TextInputType.name,
-                    decoration: InputDecoration(
-                      filled: true,
-                      prefixIcon: Icon(Icons.business_outlined,size: 25,),
-                      prefixIconColor: Color(0xFFFF7043),
-                      fillColor: Color(0xFFFFFFFF),
-                      hintText: 'Enter Venue Name',
-                      hintStyle: TextStyle(
-                        color: Color(0xFF757575),
-                        fontSize: 16
-                      ),
-                      labelText: 'Venue Name',
-                      labelStyle: TextStyle(
-                        color: Color(0xFF757575)
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                        borderRadius: BorderRadius.circular(10)
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                        borderRadius: BorderRadius.circular(10)
-                      ),
-                      focusedErrorBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-                      errorBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.redAccent,width: 2),
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-            
-                    ),
-            
-            
-                    validator: (value){
-                      if(value == null || value.isEmpty){
-                        return "Please enter venue ";
-                      }
-                      return null;
-                    },
+                    label: 'Venue Name',
+                    icon: Icons.business_outlined,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Enter venue name' : null,
                   ),
+                  const SizedBox(height: 20),
 
-                  SizedBox(height: 30,),
-            
-                  TextFormField(
+                  // --- Venue Location ---
+                  _buildTextField(
                     controller: venueLocation,
-                    style: TextStyle(
-                      
-                      color: Colors.black,
-                      ),
-                    keyboardType: TextInputType.name,
-                    decoration: InputDecoration(
-                      filled: true,
-                      prefixIcon: Icon(Icons.location_on,size: 25,),
-                      prefixIconColor: Color(0xFFFF7043),
-                      fillColor: Color(0xFFFFFFFF),
-                      hintText: 'Enter Venue Location',
-                      hintStyle: TextStyle(
-                        color: Color(0xFF757575),
-                        fontSize: 16
-                      ),
-                      labelText: 'Venue Location',
-                      labelStyle: TextStyle(
-                        color: Color(0xFF757575)
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                        borderRadius: BorderRadius.circular(10)
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                        borderRadius: BorderRadius.circular(10)
-                      ),
-                      focusedErrorBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-                      errorBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.redAccent,width: 2),
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-            
-                    ),
-            
-            
-                    validator: (value){
-                      if(value == null || value.isEmpty){
-                        return "Please enter location ";
-                      }
-                      return null;
-                    },
+                    label: 'Venue Location',
+                    icon: Icons.location_on,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Enter location' : null,
                   ),
-            
-            
-                  SizedBox(height: 30,),
-            
-                  TextFormField(
-                    obscureText: showPass,
-                    style: TextStyle(color: Colors.black),
-                    controller: password,
-                    keyboardType: TextInputType.visiblePassword,
-                    decoration: InputDecoration(
-                        prefixIcon: Icon(Icons.lock_outline,size: 25,),
-                        prefixIconColor: Color(0xFFFF7043),
-                        filled: true,
-                        fillColor: Colors.white,
-                        suffixIcon: IconButton(
-                            onPressed: (){
-                              setState(() {
-                                showPass = !showPass;
-                              });
-                            },
-                            icon: Icon(Icons.remove_red_eye_outlined),color: Colors.white,),
-                        hintText: 'Enter Password',
-                        hintStyle: TextStyle(
-                            color: Color(0xFF757575)
-                        ),
-                        labelText: 'Password',
-                        labelStyle: TextStyle(
-                            color: Color(0xFF757575)
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                            borderRadius: BorderRadius.circular(10)
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                            borderRadius: BorderRadius.circular(10)
-                        ),
-                      focusedErrorBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-                      errorBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.redAccent,width: 2),
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-                    ),
-                    validator: (value){
-                      if(value == null || value.isEmpty){
-                        return "Please enter password";
-                      }
-                      if(value.length < 8){
-                        return "Password must be 8 characters or more";
-                      }
-                      return null;
-                    },
-                  ),
-            
-                  SizedBox(height: 40,),
-            
-                  Center(
-                    child: ElevatedButton(
-                        onPressed: (){
-                          if(formkey.currentState!.validate()){
-                            Navigator.pushNamed(context, '/LogIn');
-                            return;
-                          }
+                  const SizedBox(height: 20),
 
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFFFF7043),
-                          minimumSize: Size(220, 50),
-            
-                        ),
-            
-                        child: Text("Create Account",style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold
-                        ),)
+                  // --- Password ---
+                  TextFormField(
+                    controller: password,
+                    obscureText: showPass,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: const Icon(Icons.lock_outline,color: Color(0xFFFF7043),),
+                      suffixIcon: IconButton(
+                        onPressed: () =>
+                            setState(() => showPass = !showPass),
+                        icon: Icon(showPass
+                            ? Icons.visibility_off
+                            : Icons.visibility),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide:
+                            const BorderSide(color: Color(0xFF26A69A), width: 2),
+                      ),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Enter password';
+                      if (v.length < 8) return 'Minimum 8 characters';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 30),
+
+                  // --- Image Picker Section ---
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Upload Venue Images (max 5):",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700]),
                     ),
                   ),
-            
-                  SizedBox(height: 40,),
-            
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
                     children: [
-                      Text("Already have an account?",style: TextStyle(
-                          color: Color(0xFF757575),
-                          fontSize: 16
-                      ),),
-                      TextButton(
-                          onPressed: (){
-                            Navigator.pushNamed(context, '/ManagerLogIn');
-                          },
-                          child: Text("Sign in",style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color:Colors.blue,
-            
-                          ),))
+                      ...selectedImages.map(
+                        (img) => Image.file(
+                          File(img.path),
+                          width: 70,
+                          height: 70,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      if (selectedImages.length < 5)
+                        GestureDetector(
+                          onTap: pickImages,
+                          child: Container(
+                            width: 70,
+                            height: 70,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.add_a_photo,
+                                color: Colors.black54),
+                          ),
+                        ),
                     ],
-                  )
-            
-            
-            
-            
-            
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  // --- Submit Button ---
+                  ElevatedButton(
+                    onPressed: () {
+                      if (formKey.currentState!.validate()) {
+                        if (selectedImages.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content:
+                                    Text('Please upload at least 1 image')),
+                          );
+                          return;
+                        }
+                        Navigator.pushNamed(context, '/ManagerLogIn');
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF7043),
+                      minimumSize: const Size(220, 50),
+                    ),
+                    child: const Text(
+                      "Create Account",
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  // --- Reusable TextField Widget ---
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboard = TextInputType.text,
+    required String? Function(String?) validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboard,
+      style: const TextStyle(color: Colors.black),
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: Color(0xFFFF7043)),
+        labelText: label,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF26A69A), width: 2),
+        ),
+      ),
+      validator: validator,
     );
   }
 }

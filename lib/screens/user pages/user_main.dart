@@ -22,73 +22,100 @@ class _UserMainState extends State<UserMain> {
   @override
   Widget build(BuildContext context) {
 
-    return Scaffold(
-       backgroundColor: Colors.white,
+    // ignore: deprecated_member_use
+    return WillPopScope(
+      
+      onWillPop: () async { 
 
-      appBar: AppBar(
+        if (index != 0) {
+
+          setState(() {
+          index = 0; // go back to Home
+        });
         
-       title: Image.asset("assets/images/logo.png",
-       height: 120,
-       fit: BoxFit.cover,),
-       backgroundColor: Color(0xFF26A69A),
-       centerTitle: true,
-     
-       ),
-       drawer: Drawer(
-        width: 250,
-        child: ListView(
-          children: [
-            Image.asset("assets/images/logo.png",alignment: Alignment.center,),
-            ListTile(
-              leading: Icon(Icons.person),
-              title: Text("Profile"),
+        return false; // stop default back (don’t exit)
+        
+      } else {
+        return true; // exit app
+      }
+       },
+      child: Scaffold(
+         backgroundColor: Colors.white,
+      
+        appBar: AppBar(
+          
+          
+         title: Image.asset("assets/images/logo.png",
+         height: 80,
+         fit: BoxFit.cover,),
+         backgroundColor: Color(0xFF004E89),
+         centerTitle: true,
+         
+         actions: [
+          IconButton(
+            onPressed: (){
+      
+          }, 
+          icon: Icon(Icons.notifications_none,color: Color(0xFFFF7043),))
+         ],
+       
+         ),
+         drawer: Drawer(
+          width: 250,
+          child: ListView(
+            children: [
+              Image.asset("assets/images/logo.png",alignment: Alignment.center,),
+              ListTile(
+                leading: Icon(Icons.person),
+                title: Text("Profile"),
+              ),
+              ListTile(
+                leading: Icon(Icons.settings),
+                title: Text("Setting"),
+              ),
+              ListTile(
+                leading: Icon(Icons.logout),
+                title: Text("Logout"),
+              )
+            ],
+          ),
+         ),
+      
+        body:userpages[index],
+        
+        bottomNavigationBar: BottomNavigationBar(
+           currentIndex: index,
+          backgroundColor: Color(0xFF26A69A),
+          selectedItemColor: Color(0xFFFFD54F),
+          selectedLabelStyle: TextStyle(
+            fontWeight: FontWeight.bold
+          ),
+          unselectedItemColor: Colors.white,
+          onTap: (value){
+            setState(() {
+              index = value;
+            });
+         
+          },
+         
+          items: [
+            BottomNavigationBarItem(
+              label: "Home",
+              icon: Icon(Icons.home)
             ),
-            ListTile(
-              leading: Icon(Icons.settings),
-              title: Text("Setting"),
+            BottomNavigationBarItem(
+                label: "Booking",
+                icon: Icon(Icons.calendar_month)
             ),
-            ListTile(
-              leading: Icon(Icons.logout),
-              title: Text("Logout"),
-            )
+            BottomNavigationBarItem(
+                label: "Tournament",
+                icon: Icon(Icons.emoji_events_outlined)
+            ),
+      
           ],
         ),
-       ),
-
-      body:userpages[index],
       
-      bottomNavigationBar: BottomNavigationBar(
-         currentIndex: index,
-        backgroundColor: Color(0xFF26A69A),
-        selectedItemColor: Color(0xFFFFD54F),
-        selectedLabelStyle: TextStyle(
-          fontWeight: FontWeight.bold
-        ),
-        unselectedItemColor: Colors.white,
-        onTap: (value){
-          setState(() {
-            index = value;
-          });
-       
-        },
-       
-        items: [
-          BottomNavigationBarItem(
-            label: "Home",
-            icon: Icon(Icons.home)
-          ),
-          BottomNavigationBarItem(
-              label: "Booking",
-              icon: Icon(Icons.calendar_month)
-          ),
-          BottomNavigationBarItem(
-              label: "Tournament",
-              icon: Icon(Icons.emoji_events_outlined)
-          ),
-
-        ],
       ),
-
     );
   }
 }

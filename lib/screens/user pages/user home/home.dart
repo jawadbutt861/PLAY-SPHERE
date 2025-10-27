@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+// import 'package:f_y_p/screens/user%20pages/categories/categories.dart';
+// import 'package:f_y_p/screens/user%20pages/user home/favourite/favourite.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -65,90 +67,105 @@ class _HomeState extends State<Home> {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
       
-            Container(
-      
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-      
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color.fromRGBO(0, 0, 0, 1).withOpacity(0.3),
-                    offset: Offset(2, 1) 
-                  )
-                ]
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: 15,
-                children: [
-                  Icon(Icons.calendar_month,size: 30,),
-                  Text("My Calender",textAlign: TextAlign.center,style: TextStyle(
-                    color: Color(0xFF757575),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12
-                  ),)
-                ],
-              ),
-            ),
-      
-            Container(
-      
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-      
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color.fromRGBO(0, 0, 0, 1).withOpacity(0.3),
-                    offset: Offset(2, 1) 
-                  )
-                ]
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: 15,
-                children: [
-                  Icon(Icons.workspace_premium,size: 30,),
-                  Text("Favourite  Venue",textAlign: TextAlign.center,style: TextStyle(
-                    color: Color(0xFF757575),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold
-                  ),)
-                ],
+            GestureDetector(
+              onTap: (){
+                Navigator.pushNamed(context, '/Calender');
+              },
+              child: Container(
+                    
+                width: 90,
+                height: 90,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                    
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF004E89),
+                      offset: Offset(2, 1) 
+                    )
+                  ]
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: 5,
+                  children: [
+                    Icon(Icons.calendar_month,size: 30,),
+                    Text("My Calender",textAlign: TextAlign.center,style: TextStyle(
+                      color: Color(0xFF757575),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12
+                    ),)
+                  ],
+                ),
               ),
             ),
       
-            Container(
-      
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-      
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color.fromRGBO(0, 0, 0, 1).withOpacity(0.3),
-                    offset: Offset(2, 1) 
-                  )
-                ]
+            GestureDetector(
+              onTap: (){
+                  Navigator.pushNamed(context, '/Favourite');
+                },
+              child: Container(
+                    
+                width: 90,
+                height: 90,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                    
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color.fromRGBO(0, 0, 0, 1).withOpacity(0.3),
+                      offset: Offset(2, 1) 
+                    )
+                  ]
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: 5,
+                  children: [
+                    Icon(Icons.workspace_premium,size: 30,),
+                    Text("Favourite  Venue",textAlign: TextAlign.center,style: TextStyle(
+                      color: Color(0xFF757575),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold
+                    ),)
+                  ],
+                ),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: 15,
-                children: [
-                  Icon(Icons.receipt_long_sharp,size: 30,),
-                  Text("Payment History",textAlign: TextAlign.center,style: TextStyle(
-                    color: Color(0xFF757575),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12
-                  ),)
-                ],
+            ),
+      
+            GestureDetector(
+              onTap: (){
+                  Navigator.pushNamed(context, '/BookingHistory');
+                },
+              child: Container(
+                    
+                width: 90,
+                height: 90,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                    
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color.fromRGBO(0, 0, 0, 1).withOpacity(0.3),
+                      offset: Offset(2, 1) 
+                    )
+                  ]
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: 5,
+                  children: [
+                    Icon(Icons.history_outlined,size: 30,),
+                    Text("Booking  History",textAlign: TextAlign.center,style: TextStyle(
+                      color: Color(0xFF757575),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12
+                    ),)
+                  ],
+                ),
               ),
             )
           ],

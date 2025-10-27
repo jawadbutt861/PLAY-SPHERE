@@ -9,6 +9,8 @@ class Categories extends StatefulWidget {
 
 class _CategoriesState extends State<Categories> {
   int selectedIndex = 0;
+   List<Map<String, dynamic>> favouriteGrounds = [];
+ 
 
   List<Map<String, dynamic>> categories = [
     {"name": "ALL", "icon": Icon(Icons.star_outline_outlined, size: 30, color: Colors.black)},
@@ -23,51 +25,49 @@ class _CategoriesState extends State<Categories> {
   // 🏏 Full list of grounds (4 per category)
   List<Map<String, dynamic>> sports = [
     // Cricket
-    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Buitems Cricket Ground 1"},
-    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Buitems Cricket Ground 2"},
-    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Buitems Cricket Ground 3"},
-    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Buitems Cricket Ground 4"},
+    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Buitems Cricket Ground "},
+    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Shola Cricket Ground "},
+    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Haideri Cricket Ground "},
+    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Bolan Cricket Ground "},
 
     // Football
-    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Buitems Football Ground 1"},
-    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Buitems Football Ground 2"},
-    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Buitems Football Ground 3"},
-    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Buitems Football Ground 4"},
+    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Buitems Football Ground "},
+    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Shahbaz Football Ground "},
+    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Railway Football Ground "},
+    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Spini Football Ground "},
 
     // Tennis
-    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "Buitems Tennis Ground 1"},
-    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "Buitems Tennis Ground 2"},
-    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "Buitems Tennis Ground 3"},
-    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "Buitems Tennis Ground 4"},
+    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "Buitems Tennis Court "},
+    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "UoB Tennis Court "},
+    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "Alhamd Tennis Court "},
+    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "NUML Court "},
 
     // Basketball
-    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "Buitems Basketball Ground 1"},
-    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "Buitems Basketball Ground 2"},
-    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "Buitems Basketball Ground 3"},
-    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "Buitems Basketball Ground 4"},
+    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "Buitems Basketball Ground "},
+    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "UoB Basketball Ground "},
+    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "Alhamd Basketball Ground "},
+    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "NUML Basketball Ground "},
 
     // Hockey
-    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "Buitems Hockey Ground 1"},
-    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "Buitems Hockey Ground 2"},
-    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "Buitems Hockey Ground 3"},
-    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "Buitems Hockey Ground 4"},
+    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "Ayub Hockey Ground "},
+    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "Buitems Hockey Ground "},
+    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "UoB Hockey Ground "},
+    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "NUML Hockey Ground "},
 
     // Volleyball
-    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "Buitems Volleyball Ground 1"},
-    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "Buitems Volleyball Ground 2"},
-    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "Buitems Volleyball Ground 3"},
-    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "Buitems Volleyball Ground 4"},
+    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "Buitems Volleyball Ground "},
+    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "Ayub Volleyball Ground "},
+    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "Alhamd Volleyball Ground "},
+    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "UoB Volleyball Ground "},
   ];
 
   @override
   Widget build(BuildContext context) {
     String selectedCategory = categories[selectedIndex]['name'];
 
-    // ✅ Show all if "ALL" selected, else filter by category
     List<Map<String, dynamic>> filteredSports = selectedCategory == "ALL"
         ? sports
         : sports.where((item) => item['category'] == selectedCategory).toList();
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -76,6 +76,15 @@ class _CategoriesState extends State<Categories> {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         backgroundColor: const Color(0xFF26A69A),
+
+        actions: [
+          IconButton(
+            onPressed: (){
+
+          }, 
+          icon: Icon(Icons.search,color: Colors.black,)),
+          
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -126,6 +135,7 @@ class _CategoriesState extends State<Categories> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                       
                       ],
                     ),
                   );
@@ -145,6 +155,7 @@ class _CategoriesState extends State<Categories> {
 
             // 🔹 Grid of Filtered Grounds
             GridView.builder(
+              
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -152,11 +163,13 @@ class _CategoriesState extends State<Categories> {
                 crossAxisCount: 2, // 2 cards per row
                 crossAxisSpacing: 10,
                 mainAxisSpacing: 10,
-                childAspectRatio: 1,
+                childAspectRatio: 0.9,
               ),
               itemCount: filteredSports.length,
               itemBuilder: (context, index) {
                 final ground = filteredSports[index];
+                  final isFavourite = favouriteGrounds.contains(ground);
+             
                 return Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
@@ -166,6 +179,7 @@ class _CategoriesState extends State<Categories> {
                     color: Colors.white,
                   ),
                   child: Column(
+                    
                     children: [
                       ClipRRect(
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
@@ -176,6 +190,7 @@ class _CategoriesState extends State<Categories> {
                           fit: BoxFit.cover,
                         ),
                       ),
+                     
                       const SizedBox(height: 8),
                       Text(
                         ground['name'],
@@ -185,6 +200,27 @@ class _CategoriesState extends State<Categories> {
                           fontSize: 13,
                         ),
                       ),
+                       Positioned(
+                            right: 8,
+                            top: 8,
+                            child: IconButton(
+                              icon: Icon(
+                                isFavourite ? Icons.favorite : Icons.favorite_border,
+                                color: isFavourite ? Colors.red : Color(0xFF757575),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  if (isFavourite) {
+                                    favouriteGrounds.remove(ground);
+                                  } else {
+                                    favouriteGrounds.add(ground);
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+
+
                     ],
                   ),
                 );

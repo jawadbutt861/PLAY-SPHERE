@@ -191,7 +191,7 @@ class _ManagerLoginState extends State<ManagerLogin> {
                 Center(
                   child: ElevatedButton(
                       onPressed: (){
-                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/ManagerSignUp');
                         },
             
                       style: ElevatedButton.styleFrom(
