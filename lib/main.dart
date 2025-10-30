@@ -10,6 +10,7 @@ import "package:f_y_p/screens/user%20pages/user%20home/booking%20history/booking
 import "package:f_y_p/screens/user%20pages/user%20home/calender/calender.dart";
 import "package:f_y_p/screens/user%20pages/user%20home/favourite/favourite.dart";
 import "package:f_y_p/screens/user%20pages/user%20home/home.dart";
+import "package:f_y_p/screens/user%20pages/user%20home/profile.dart";
 import "package:f_y_p/screens/user%20pages/user_main.dart";
 import "package:f_y_p/screens/user%20signup/user_signup.dart";
 import "package:flutter/material.dart";
@@ -39,9 +40,19 @@ class MyApp extends StatelessWidget {
         '/Calender' : (context) => Calender(),
         '/BookingHistory' : (context) => BookingHistory(),
         '/TournamentForm' : (context) => TournamentForm(),
+        '/Profile' : (context) => Profile(),
      
 
       },
+
+      // onGenerateRoute: (RouteSettings settings){
+      //   switch(settings.name){
+      //     case "/Favourite":{
+      //       Map<String,dynamic> favouriteGrounds = settings.arguments as Map<String,dynamic>;
+      //       return MaterialPageRoute(builder: (_) => Favourite());
+      //     }
+      //   }
+      // },
       
 
     );

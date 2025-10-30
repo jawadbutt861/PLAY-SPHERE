@@ -17,7 +17,7 @@ class _UserLoginState extends State<UserLogin> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF26A69A),
+      backgroundColor: Color(0xFF004E89),
       body: Form(
         key: formkey,
         child: Center(
@@ -25,7 +25,7 @@ class _UserLoginState extends State<UserLogin> {
             decoration: BoxDecoration(
               color:Colors.white.withAlpha(200),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white,width: 2)
+              border: Border.all(color: Color(0xFFFF7043),width: 2)
             ),
             width: 400,
             height: 660,
@@ -64,15 +64,15 @@ class _UserLoginState extends State<UserLogin> {
                         color: Color(0xFF757575)
                     ),
                     enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
+                        borderSide: BorderSide(color: Color(0xFF004E89),width: 2),
                         borderRadius: BorderRadius.circular(10)
                     ),
                     focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
+                        borderSide: BorderSide(color: Color(0xFF004E89),width: 2),
                         borderRadius: BorderRadius.circular(10)
                     ),
                     focusedErrorBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
+                        borderSide: BorderSide(color: Color(0xFF004E89),width: 2),
                         borderRadius: BorderRadius.circular(10)
                     ),
                     errorBorder: OutlineInputBorder(
@@ -119,15 +119,15 @@ class _UserLoginState extends State<UserLogin> {
                         color: Color(0xFF757575)
                     ),
                     enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
+                        borderSide: BorderSide(color: Color(0xFF004E89),width: 2),
                         borderRadius: BorderRadius.circular(10)
                     ),
                     focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
+                        borderSide: BorderSide(color: Color(0xFF004E89),width: 2),
                         borderRadius: BorderRadius.circular(10)
                     ),
                     focusedErrorBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF26A69A),width: 2),
+                        borderSide: BorderSide(color: Color(0xFF004E89),width: 2),
                         borderRadius: BorderRadius.circular(10)
                     ),
                     errorBorder: OutlineInputBorder(

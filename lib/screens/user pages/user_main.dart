@@ -44,7 +44,11 @@ class _UserMainState extends State<UserMain> {
       
         appBar: AppBar(
           
-          
+          leading: IconButton(
+            onPressed: (){
+                Navigator.pushNamed(context, '/Profile');
+            },
+           icon: Icon(Icons.person_outline_sharp,color: Color(0xFFFF7043),size: 20,)),
          title: Image.asset("assets/images/logo.png",
          height: 80,
          fit: BoxFit.cover,),
@@ -56,36 +60,16 @@ class _UserMainState extends State<UserMain> {
             onPressed: (){
       
           }, 
-          icon: Icon(Icons.notifications_none,color: Color(0xFFFF7043),))
+          icon: Icon(Icons.notifications_none,color: Color(0xFFFF7043),size: 20,))
          ],
        
          ),
-         drawer: Drawer(
-          width: 250,
-          child: ListView(
-            children: [
-              Image.asset("assets/images/logo.png",alignment: Alignment.center,),
-              ListTile(
-                leading: Icon(Icons.person),
-                title: Text("Profile"),
-              ),
-              ListTile(
-                leading: Icon(Icons.settings),
-                title: Text("Setting"),
-              ),
-              ListTile(
-                leading: Icon(Icons.logout),
-                title: Text("Logout"),
-              )
-            ],
-          ),
-         ),
-      
+        
         body:userpages[index],
         
         bottomNavigationBar: BottomNavigationBar(
            currentIndex: index,
-          backgroundColor: Color(0xFF26A69A),
+          backgroundColor: Color(0xFF004E89),
           selectedItemColor: Color(0xFFFFD54F),
           selectedLabelStyle: TextStyle(
             fontWeight: FontWeight.bold

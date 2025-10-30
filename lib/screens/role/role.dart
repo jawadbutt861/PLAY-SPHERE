@@ -14,7 +14,7 @@ class _RoleState extends State<Role> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF26A69A),
+      backgroundColor: Color(0xFF004E89),
       body: ListView(
         children: [
           SizedBox(height: 100,),
