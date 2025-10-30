@@ -335,7 +335,7 @@ class _CategoriesState extends State<Categories> {
                               child: IconButton(
                                 icon: Icon(
                                   isFavourite ? Icons.favorite : Icons.favorite_border,
-                                  color: isFavourite ? Colors.red : const Color(0xFF757575),
+                                  color: isFavourite ? Colors.red :  Colors.white,
                                 ),
                                 onPressed: () {
                                   setState(() {
