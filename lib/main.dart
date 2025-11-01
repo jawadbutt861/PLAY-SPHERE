@@ -4,6 +4,7 @@ import "package:f_y_p/screens/user%20login/user_login.dart";
 import "package:f_y_p/screens/manager%20home/manager_home.dart";
 import "package:f_y_p/screens/manager%20signup/manager_signup.dart";
 import "package:f_y_p/screens/role/role.dart";
+import "package:f_y_p/screens/user%20pages/booking/booking.dart";
 import "package:f_y_p/screens/user%20pages/categories/categories.dart";
 import "package:f_y_p/screens/user%20pages/tournament/tournament%20form/tournament%20form.dart";
 import "package:f_y_p/screens/user%20pages/user%20home/booking%20history/booking%20history.dart";
@@ -36,6 +37,7 @@ class MyApp extends StatelessWidget {
         '/ManagerHome' : (context) => Managerhome(),
         '/Categories' : (context) => Categories(),
         '/Favourite' : (context) => Favourite(),
+        '/Booking' : (context) => Booking(), 
         '/Home' : (context) => Home(),
         '/Calender' : (context) => Calender(),
         '/BookingHistory' : (context) => BookingHistory(),
@@ -44,16 +46,6 @@ class MyApp extends StatelessWidget {
      
 
       },
-
-      // onGenerateRoute: (RouteSettings settings){
-      //   switch(settings.name){
-      //     case "/Favourite":{
-      //       Map<String,dynamic> favouriteGrounds = settings.arguments as Map<String,dynamic>;
-      //       return MaterialPageRoute(builder: (_) => Favourite());
-      //     }
-      //   }
-      // },
-      
 
     );
   }
@@ -68,4 +60,3 @@ class MyApp extends StatelessWidget {
 // const Color kAccentColor = Color(0xFFFFD54F);      // Yellow
 // const Color kTextPrimary = Color(0xFF4E342E);      // Dark Brown
 // const Color kTextSecondary = Color(0xFF757575);    // Gray
-

@@ -120,7 +120,7 @@ class _ProfileState extends State<Profile> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: Color(0xFF1A659E),
         elevation: 0,
         actions: [
           IconButton(
@@ -140,7 +140,7 @@ class _ProfileState extends State<Profile> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.blueAccent, Colors.lightBlueAccent],
+            colors: [Color(0xFF1A659E), Colors.lightBlueAccent],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),

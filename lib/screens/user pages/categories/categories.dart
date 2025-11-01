@@ -216,7 +216,7 @@ class _CategoriesState extends State<Categories> {
           "Book Your Venues",
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: const Color(0xFF26A69A),
+        backgroundColor: const Color(0xFF1A659E),
         actions: [
           IconButton(
             onPressed: () {},

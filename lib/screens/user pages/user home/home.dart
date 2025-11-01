@@ -132,7 +132,7 @@ class _HomeState extends State<Home> {
         'assets/images/c1.jpeg',
         'assets/images/c1.jpeg',
         'assets/images/c1.jpeg',
-        'assets/images/c1.jpeg',
+        
       ],
     },
     {
@@ -142,7 +142,7 @@ class _HomeState extends State<Home> {
         'assets/images/f1.jpg',
         'assets/images/f1.jpg',
         'assets/images/f1.jpg',
-        'assets/images/f1.jpg',
+        
       ],
     },
     {
@@ -152,7 +152,7 @@ class _HomeState extends State<Home> {
         'assets/images/t1.jpeg',
         'assets/images/t1.jpeg',
         'assets/images/t1.jpeg',
-        'assets/images/t1.jpeg',
+        
       ],
     },
     {
@@ -162,7 +162,7 @@ class _HomeState extends State<Home> {
         'assets/images/b1.webp',
         'assets/images/b1.webp',
         'assets/images/b1.webp',
-        'assets/images/b1.webp',
+        
       ],
     },
     {
@@ -182,7 +182,7 @@ class _HomeState extends State<Home> {
         'assets/images/v1.jpg',
         'assets/images/v1.jpg',
         'assets/images/v1.jpg',
-        'assets/images/v1.jpg',
+        
       ],
     },
   ];
