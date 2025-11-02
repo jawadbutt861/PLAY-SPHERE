@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import "package:f_y_p/screens/user%20pages/user%20home/favourite/global_data.dart";
+
+
+
+
 
 class Categories extends StatefulWidget {
   const Categories({super.key});
@@ -9,8 +14,8 @@ class Categories extends StatefulWidget {
 
 class _CategoriesState extends State<Categories> {
   int selectedIndex = 0;
-  List<Map<String, dynamic>> favouriteGrounds = []; // push this in home page
-  List<Map<String, dynamic>> bookedGrounds = []; // New list to track booked grounds with details
+ // List<Map<String, dynamic>> favouriteGrounds = [ ]; // push this in home page
+  //List<Map<String, dynamic>> bookedGrounds = []; // New list to track booked grounds with details
   Map<String, Map<String, List<String>>> bookedSlots = {}; // groundName -> date (yyyy-MM-dd) -> list of booked slots
 
   List<Map<String, dynamic>> categories = [
@@ -173,13 +178,14 @@ class _CategoriesState extends State<Categories> {
                       bookedSlots[ground['name']]![dateKey]!.add(selectedSlot!);
                       
                       // Add to bookedGrounds list with date
-                      bookedGrounds.add({
+                      GlobalData.bookedGrounds.add({
                         'ground': ground,
-                        'date': selectedDate!.toLocal().toString().split(' ')[0], // Date as string
+                        'date': selectedDate!.toLocal().toString().split(' ')[0],
                         'slot': selectedSlot,
                         'payment': selectedPayment,
                       });
-                      
+
+
                       // Handle booking logic here (e.g., save to database, show success message)
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text("Booking confirmed for ${ground['name']} on ${selectedDate!.toLocal().toString().split(' ')[0]} at $selectedSlot via $selectedPayment")),
@@ -303,7 +309,7 @@ class _CategoriesState extends State<Categories> {
               itemCount: filteredSports.length,
               itemBuilder: (context, index) {
                 final ground = filteredSports[index];
-                final isFavourite = favouriteGrounds.contains(ground);
+                final isFavourite = GlobalData.favouriteGrounds.contains(ground);
 
                 return Container(
                   decoration: BoxDecoration(
@@ -340,9 +346,12 @@ class _CategoriesState extends State<Categories> {
                                 onPressed: () {
                                   setState(() {
                                     if (isFavourite) {
-                                      favouriteGrounds.remove(ground);
+                                      GlobalData.favouriteGrounds.remove(ground);
+
+
+
                                     } else {
-                                      favouriteGrounds.add(ground);
+                                      GlobalData.favouriteGrounds.add(ground);
                                     }
                                   });
                                 },

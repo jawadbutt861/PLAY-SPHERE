@@ -16,6 +16,7 @@ import "package:f_y_p/screens/user%20pages/user_main.dart";
 import "package:f_y_p/screens/user%20signup/user_signup.dart";
 import "package:flutter/material.dart";
 
+
 void main(){
   runApp(MyApp());
 }
@@ -37,7 +38,7 @@ class MyApp extends StatelessWidget {
         '/ManagerHome' : (context) => Managerhome(),
         '/Categories' : (context) => Categories(),
         '/Favourite' : (context) => Favourite(),
-        '/Booking' : (context) => Booking(), 
+        '/Booking' : (context) => Booked(), 
         '/Home' : (context) => Home(),
         '/Calender' : (context) => Calender(),
         '/BookingHistory' : (context) => BookingHistory(),

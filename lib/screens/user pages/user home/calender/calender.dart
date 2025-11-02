@@ -15,7 +15,7 @@ class _CalenderState extends State<Calender> {
         title: Text("My Calender", style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold),),
-        backgroundColor: Color(0xFF26A69A),
+        backgroundColor: Color(0xFF1A659E),
       ),
     );
   }

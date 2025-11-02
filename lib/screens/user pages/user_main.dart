@@ -15,7 +15,7 @@ class _UserMainState extends State<UserMain> {
       int index = 0;
   List<Widget> userpages = [
     Home(),
-    Booking(),
+    Booked(),
     Tournament()
   ];
 

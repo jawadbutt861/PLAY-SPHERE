@@ -15,7 +15,7 @@ class _BookingHistoryState extends State<BookingHistory> {
         title: Text("Booking History", style: TextStyle(
           fontSize: 18, 
           fontWeight: FontWeight.bold),),
-        backgroundColor: Color(0xFF26A69A),
+        backgroundColor: Color(0xFF1A659E),
       ),
     );
   }
