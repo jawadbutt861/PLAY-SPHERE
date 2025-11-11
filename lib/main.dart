@@ -6,6 +6,7 @@ import "package:f_y_p/screens/manager%20signup/manager_signup.dart";
 import "package:f_y_p/screens/role/role.dart";
 import "package:f_y_p/screens/user%20pages/booking/booking.dart";
 import "package:f_y_p/screens/user%20pages/categories/categories.dart";
+import "package:f_y_p/screens/user%20pages/notifications.dart";
 import "package:f_y_p/screens/user%20pages/tournament/tournament%20form/tournament%20form.dart";
 import "package:f_y_p/screens/user%20pages/user%20home/booking%20history/booking%20history.dart";
 import "package:f_y_p/screens/user%20pages/user%20home/calender/calender.dart";
@@ -44,6 +45,7 @@ class MyApp extends StatelessWidget {
         '/BookingHistory' : (context) => BookingHistory(),
         '/TournamentForm' : (context) => TournamentForm(),
         '/Profile' : (context) => Profile(),
+        '/Notifications' : (context) => Notifications(),
      
 
       },

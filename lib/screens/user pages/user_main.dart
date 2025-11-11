@@ -58,6 +58,7 @@ class _UserMainState extends State<UserMain> {
          actions: [
           IconButton(
             onPressed: (){
+              Navigator.pushNamed(context, '/Notifications');
       
           }, 
           icon: Icon(Icons.notifications_none,color: Color(0xFFFF7043),size: 20,))
