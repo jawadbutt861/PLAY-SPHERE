@@ -1,15 +1,16 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../main.dart';
 
 class AutoScrollingImageRow extends StatefulWidget {
   final String category;
   final List<String> imageAssets;
 
   const AutoScrollingImageRow({
-    Key? key,
+    super.key,
     required this.category,
     required this.imageAssets,
-  }) : super(key: key);
+  });
 
   @override
   State<AutoScrollingImageRow> createState() => _AutoScrollingImageRowState();
@@ -56,32 +57,37 @@ class _AutoScrollingImageRowState extends State<AutoScrollingImageRow> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Column(
       children: [
-        SizedBox(
-          width: 380.0,
-          height: 200.0, // Adjust height as needed
+        Container(
+          height: 220,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
           child: PageView.builder(
             controller: _pageController,
             itemCount: widget.imageAssets.length,
             itemBuilder: (context, index) {
-              return _buildStyledImage(widget.imageAssets[index]);
+              return _buildStyledImage(widget.imageAssets[index], colorScheme);
             },
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
             widget.imageAssets.length,
             (index) => AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.symmetric(horizontal: 4.0),
-              height: 8.0,
-              width: _currentPage == index ? 24.0 : 8.0,
+              margin: const EdgeInsets.symmetric(horizontal: 3.0),
+              height: 6.0,
+              width: _currentPage == index ? 20.0 : 6.0,
               decoration: BoxDecoration(
-                color: _currentPage == index ? Colors.blue : Colors.grey,
-                borderRadius: BorderRadius.circular(4.0),
+                color: _currentPage == index 
+                    ? AppTheme.primaryColor 
+                    : colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(3.0),
               ),
             ),
           ),
@@ -90,25 +96,42 @@ class _AutoScrollingImageRowState extends State<AutoScrollingImageRow> {
     );
   }
 
-  Widget _buildStyledImage(String asset) {
+  Widget _buildStyledImage(String asset, ColorScheme colorScheme) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8.0),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15.0),
+        borderRadius: BorderRadius.circular(20.0),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8.0,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 12.0,
+            offset: const Offset(0, 6),
           ),
         ],
-        border: Border.all(color: Colors.grey.shade300, width: 1.0),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(15.0),
-        child: Image.asset(
-          asset,
-          fit: BoxFit.cover,
+        borderRadius: BorderRadius.circular(20.0),
+        child: Stack(
+          children: [
+            Image.asset(
+              asset,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+            ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.3),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -189,204 +212,229 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
 
     return Scaffold(
-      body: ListView(
-        children: [
-          Container(
-            width: screenWidth * 0.9, // Responsive width
-            height: 300,
-            margin: const EdgeInsets.fromLTRB(20, 30, 20, 20),
-            padding: const EdgeInsets.fromLTRB(10, 30, 10, 0),
-            decoration: BoxDecoration(
-              image: const DecorationImage(
-                image: AssetImage('assets/images/bg2.jpg'),
-                fit: BoxFit.cover,
-              ),
-              border: Border.all(
-                color: Colors.white,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: Size(screenWidth * 0.5, 40), // Responsive button size
+      backgroundColor: colorScheme.surface,
+      body: CustomScrollView(
+        slivers: [
+          // Hero Section
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.all(20),
+              height: 280,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: AppTheme.primaryGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/Categories');
-                  },
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Book Venue",
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Color(0xFF757575),
-                          fontWeight: FontWeight.bold,
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // Background Pattern
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        image: const DecorationImage(
+                          image: AssetImage('assets/images/bg2.jpg'),
+                          fit: BoxFit.cover,
+                          opacity: 0.3,
                         ),
                       ),
-                      Icon(
-                        Icons.arrow_outward_outlined,
-                        color: Color(0xFF757575),
-                        size: 25,
+                    ),
+                  ),
+                  
+                  // Content
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Spacer(),
+                        Text(
+                          "Book Your Perfect",
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          "Sports Venue",
+                          style: theme.textTheme.headlineLarge?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Find and book the best sports venues in your area",
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.9),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        GradientButton(
+                          text: "Book Venue",
+                          icon: Icons.sports_soccer_rounded,
+                          gradient: const LinearGradient(
+                            colors: [Colors.white, Colors.white],
+                          ),
+                          textStyle: TextStyle(
+                            color: AppTheme.primaryColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/Categories');
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Quick Actions
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildQuickActionCard(
+                      context,
+                      icon: Icons.favorite_rounded,
+                      title: "Favourites",
+                      subtitle: "Saved venues",
+                      gradient: AppTheme.accentGradient,
+                      onTap: () => Navigator.pushNamed(context, '/Favourite'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildQuickActionCard(
+                      context,
+                      icon: Icons.history_rounded,
+                      title: "History",
+                      subtitle: "Past bookings",
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF8B5CF6), Color(0xFFA855F7)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      onTap: () => Navigator.pushNamed(context, '/BookingHistory'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Categories Section
+          ...categories.map((category) => SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        category['name'],
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pushNamed(context, '/Calender');
-                  },
-                  child: Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        const BoxShadow(
-                          color: Color(0xFF004E89),
-                          offset: Offset(2, 1),
-                        ),
-                      ],
-                    ),
-                    child: const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.calendar_month,
-                          size: 30,
-                        ),
-                        Text(
-                          "My Calender",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFF757575),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pushNamed(context, '/Favourite');
-                  },
-                  child: Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color.fromRGBO(0, 0, 0, 1).withOpacity(0.3),
-                          offset: const Offset(2, 1),
-                        ),
-                      ],
-                    ),
-                    child: const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.workspace_premium,
-                          size: 30,
-                        ),
-                        Text(
-                          "Favourite Venue",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFF757575),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pushNamed(context, '/BookingHistory');
-                  },
-                  child: Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color.fromRGBO(0, 0, 0, 1).withOpacity(0.3),
-                          offset: const Offset(2, 1),
-                        ),
-                      ],
-                    ),
-                    child: const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.history_outlined,
-                          size: 30,
-                        ),
-                        Text(
-                          "Booking History",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFF757575),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                AutoScrollingImageRow(
+                  category: category['name'],
+                  imageAssets: List<String>.from(category['images']),
                 ),
               ],
             ),
+          )),
+          
+          // Bottom Spacing
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 120), // Extra space for bottom nav
           ),
-          const SizedBox(height: 20),
-          // Add scrolling rows for each category
-          ...categories.map((category) => Column(
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Gradient gradient,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 100,
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 20.0, top: 25.0, bottom: 10.0),
-                  child: Text(
-                    category['name'],
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+              Icon(
+                icon,
+                color: Colors.white,
+                size: 28,
+              ),
+              const Spacer(),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              AutoScrollingImageRow(
-                category: category['name'],
-                imageAssets: List<String>.from(category['images']),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 12,
+                ),
               ),
             ],
-          )),
-          const SizedBox(height: 20),
-        ],
+          ),
+        ),
       ),
     );
   }

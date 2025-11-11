@@ -57,9 +57,7 @@ class _BookedState extends State<Booked> {
                 onPressed: () {
                   setState(() {
                     GlobalData.bookedGrounds.remove(booking);
-                    // Optionally also remove slot from bookedSlots map
-                    final dateKey = booking['date'];
-                    final slot = booking['slot'];
+                    // Remove from booked grounds
                     GlobalData.bookedGrounds.removeWhere((b) => b == booking);
                   });
                 },

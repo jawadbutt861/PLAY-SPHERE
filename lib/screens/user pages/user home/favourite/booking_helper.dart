@@ -62,13 +62,36 @@ class BookingHelper {
                       const SizedBox(height: 16),
                       const Text("Select Slot:", style: TextStyle(fontWeight: FontWeight.bold)),
                       ...getSlots(ground['category']).map((slot) {
-                        return RadioListTile<String>(
-                          title: Text(slot),
-                          value: slot,
-                          groupValue: selectedSlot,
-                          onChanged: (value) {
+                        String dateKey = selectedDate!.toIso8601String().split('T')[0];
+                        bool isTournamentBooked = !GlobalData.isSlotAvailable(ground['name'], dateKey, slot);
+                        
+                        String displayText = slot;
+                        bool isDisabled = false;
+                        
+                        if (isTournamentBooked) {
+                          displayText = "$slot (Tournament)";
+                          isDisabled = true;
+                        }
+                        
+                        return ListTile(
+                          leading: Radio<String>(
+                            value: slot,
+                            groupValue: selectedSlot,
+                            onChanged: isDisabled ? null : (value) {
+                              setState(() {
+                                selectedSlot = value;
+                              });
+                            },
+                          ),
+                          title: Text(
+                            displayText,
+                            style: TextStyle(
+                              color: isDisabled ? Colors.grey : Colors.black,
+                            ),
+                          ),
+                          onTap: isDisabled ? null : () {
                             setState(() {
-                              selectedSlot = value;
+                              selectedSlot = slot;
                             });
                           },
                         );
@@ -76,13 +99,20 @@ class BookingHelper {
                     ],
                     const SizedBox(height: 16),
                     const Text("Select Payment Method:", style: TextStyle(fontWeight: FontWeight.bold)),
-                    ...payments.map((payment) => RadioListTile<String>(
+                    ...payments.map((payment) => ListTile(
+                      leading: Radio<String>(
+                        value: payment,
+                        groupValue: selectedPayment,
+                        onChanged: (value) {
+                          setState(() {
+                            selectedPayment = value;
+                          });
+                        },
+                      ),
                       title: Text(payment),
-                      value: payment,
-                      groupValue: selectedPayment,
-                      onChanged: (value) {
+                      onTap: () {
                         setState(() {
-                          selectedPayment = value;
+                          selectedPayment = payment;
                         });
                       },
                     )),

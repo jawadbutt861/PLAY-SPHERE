@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../main.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -45,9 +46,11 @@ class _ProfileState extends State<Profile> {
     setState(() {
       _isEditing = false;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile updated successfully!')),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated successfully!')),
+      );
+    }
   }
 
   Future<void> _pickImage() async {
@@ -60,30 +63,54 @@ class _ProfileState extends State<Profile> {
   }
 
   void _showChangePasswordDialog() {
-    final TextEditingController _oldPasswordController = TextEditingController();
-    final TextEditingController _newPasswordController = TextEditingController();
-    final TextEditingController _confirmPasswordController = TextEditingController();
+    final TextEditingController oldPasswordController = TextEditingController();
+    final TextEditingController newPasswordController = TextEditingController();
+    final TextEditingController confirmPasswordController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Change Password'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_rounded, color: AppTheme.primaryColor),
+            SizedBox(width: 12),
+            Text('Change Password'),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextFormField(
-              controller: _oldPasswordController,
-              decoration: const InputDecoration(labelText: 'Old Password'),
+              controller: oldPasswordController,
+              decoration: InputDecoration(
+                labelText: 'Old Password',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
               obscureText: true,
             ),
+            const SizedBox(height: 16), // Add gap between fields
             TextFormField(
-              controller: _newPasswordController,
-              decoration: const InputDecoration(labelText: 'New Password'),
+              controller: newPasswordController,
+              decoration: InputDecoration(
+                labelText: 'New Password',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
               obscureText: true,
             ),
+            const SizedBox(height: 16), // Add gap between fields
             TextFormField(
-              controller: _confirmPasswordController,
-              decoration: const InputDecoration(labelText: 'Confirm New Password'),
+              controller: confirmPasswordController,
+              decoration: InputDecoration(
+                labelText: 'Confirm New Password',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
               obscureText: true,
             ),
           ],
@@ -91,12 +118,13 @@ class _ProfileState extends State<Profile> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
           ),
-          ElevatedButton(
+          GradientButton(
+            text: 'Change',
             onPressed: () {
               // Add password change logic here (e.g., validate and update)
-              if (_newPasswordController.text == _confirmPasswordController.text) {
+              if (newPasswordController.text == confirmPasswordController.text) {
                 // Simulate success
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Password changed successfully!')),
@@ -108,7 +136,8 @@ class _ProfileState extends State<Profile> {
                 );
               }
             },
-            child: const Text('Change'),
+            gradient: AppTheme.primaryGradient,
+            height: 40,
           ),
         ],
       ),
@@ -117,180 +146,300 @@ class _ProfileState extends State<Profile> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        backgroundColor: Color(0xFF1A659E),
-        elevation: 0,
+      backgroundColor: colorScheme.surface,
+      appBar: ModernAppBar(
+        title: 'My Profile',
         actions: [
-          IconButton(
-            icon: Icon(_isEditing ? Icons.save : Icons.edit),
-            onPressed: () {
-              if (_isEditing) {
-                _saveProfileData();
-              } else {
-                setState(() {
-                  _isEditing = true;
-                });
-              }
-            },
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(_isEditing ? Icons.save_rounded : Icons.edit_rounded, color: Colors.white),
+              onPressed: () {
+                if (_isEditing) {
+                  _saveProfileData();
+                } else {
+                  setState(() {
+                    _isEditing = true;
+                  });
+                }
+              },
+            ),
           ),
         ],
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF1A659E), Colors.lightBlueAccent],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: ListView(
-          padding: const EdgeInsets.all(20.0),
+      body: SingleChildScrollView(
+        child: Column(
           children: [
-            // Profile Header
-            Center(
-              child: Column(
-                children: [
-                  Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 60,
-                        backgroundImage: _image != null ? FileImage(_image!) : const AssetImage('assets/images/profile_placeholder.png') as ImageProvider,
-                        backgroundColor: Colors.white,
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: _pickImage,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                              color: Colors.blueAccent,
-                              shape: BoxShape.circle,
+            // Profile Header with Gradient Background
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(32),
+                  bottomRight: Radius.circular(32),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+                child: Column(
+                  children: [
+                    Stack(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 60,
+                            backgroundImage: _image != null 
+                                ? FileImage(_image!) 
+                                : const AssetImage('assets/images/profile_placeholder.png') as ImageProvider,
+                            backgroundColor: Colors.white,
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: _pickImage,
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                gradient: AppTheme.secondaryGradient,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.secondaryColor.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.camera_alt,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _isEditing
+                        ? Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: TextFormField(
+                              controller: _nameController,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                hintText: 'Enter name',
+                                hintStyle: TextStyle(color: Colors.white70),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              ),
+                            ),
+                          )
+                        : Text(
+                            _nameController.text,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
                               color: Colors.white,
-                              size: 20,
                             ),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  _isEditing
-                      ? TextFormField(
-                          controller: _nameController,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                    const SizedBox(height: 8),
+                    _isEditing
+                        ? Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: TextFormField(
+                              controller: _emailController,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                hintText: 'Enter email',
+                                hintStyle: TextStyle(color: Colors.white70),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              ),
+                            ),
+                          )
+                        : Text(
+                            _emailController.text,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white.withValues(alpha: 0.9),
+                            ),
                           ),
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            hintText: 'Enter name',
-                            hintStyle: TextStyle(color: Colors.white70),
-                          ),
-                        )
-                      : Text(
-                          _nameController.text,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                  _isEditing
-                      ? TextFormField(
-                          controller: _emailController,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.white70,
-                          ),
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            hintText: 'Enter email',
-                            hintStyle: TextStyle(color: Colors.white70),
-                          ),
-                        )
-                      : Text(
-                          _emailController.text,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.white70,
-                          ),
-                        ),
-                ],
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 30),
+            
+            const SizedBox(height: 24),
             // Profile Options
-            Card(
-              elevation: 5,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
-                  ListTile(
-                    leading: const Icon(Icons.calendar_today, color: Colors.blueAccent),
-                    title: const Text('My Calendar'),
-                    trailing: const Icon(Icons.arrow_forward_ios),
-                    onTap: () {
-                      Navigator.pushNamed(context, '/Calender');
-                    },
+                  ModernCard(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: _buildProfileOption(
+                      context,
+                      icon: Icons.favorite_rounded,
+                      title: 'Favourite Venues',
+                      subtitle: 'Your saved venues',
+                      gradient: AppTheme.accentGradient,
+                      onTap: () => Navigator.pushNamed(context, '/Favourite'),
+                    ),
                   ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.favorite, color: Colors.blueAccent),
-                    title: const Text('Favourite Venues'),
-                    trailing: const Icon(Icons.arrow_forward_ios),
-                    onTap: () {
-                      Navigator.pushNamed(context, '/Favourite');
-                    },
+                  ModernCard(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: _buildProfileOption(
+                      context,
+                      icon: Icons.history_rounded,
+                      title: 'Booking History',
+                      subtitle: 'View past bookings',
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF8B5CF6), Color(0xFFA855F7)],
+                      ),
+                      onTap: () => Navigator.pushNamed(context, '/BookingHistory'),
+                    ),
                   ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.history, color: Colors.blueAccent),
-                    title: const Text('Booking History'),
-                    trailing: const Icon(Icons.arrow_forward_ios),
-                    onTap: () {
-                      Navigator.pushNamed(context, '/BookingHistory');
-                    },
+                  ModernCard(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: _buildProfileOption(
+                      context,
+                      icon: Icons.lock_rounded,
+                      title: 'Change Password',
+                      subtitle: 'Update your password',
+                      gradient: AppTheme.secondaryGradient,
+                      onTap: _showChangePasswordDialog,
+                    ),
                   ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.lock, color: Colors.blueAccent),
-                    title: const Text('Change Password'),
-                    trailing: const Icon(Icons.arrow_forward_ios),
-                    onTap: _showChangePasswordDialog,
-                  ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.logout, color: Colors.redAccent),
-                    title: const Text('Logout'),
-                    trailing: const Icon(Icons.arrow_forward_ios),
-                    onTap: () {
-                      // Handle logout
-                    },
+                  ModernCard(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: _buildProfileOption(
+                      context,
+                      icon: Icons.logout_rounded,
+                      title: 'Logout',
+                      subtitle: 'Sign out of your account',
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+                      ),
+                      onTap: () {
+                        _showLogoutDialog();
+                      },
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-            // Additional Info or Stats
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildStatCard('Bookings', '12'),
-                _buildStatCard('Favourites', '8'),
-                _buildStatCard('Reviews', '5'),
-              ],
+            const SizedBox(height: 24),
+            // Stats Section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Expanded(child: _buildStatCard('Bookings', '12', Icons.calendar_month_rounded, AppTheme.primaryGradient)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildStatCard('Favourites', '8', Icons.favorite_rounded, AppTheme.accentGradient)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildStatCard('Reviews', '5', Icons.star_rounded, AppTheme.secondaryGradient)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 100), // Bottom padding for navigation
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Gradient gradient,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: gradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.grey[400],
+              size: 16,
             ),
           ],
         ),
@@ -298,34 +447,82 @@ class _ProfileState extends State<Profile> {
     );
   }
 
-  Widget _buildStatCard(String title, String value) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+  Widget _buildStatCard(String title, String value, IconData icon, Gradient gradient) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            color: Colors.white,
+            size: 24,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
           children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.blueAccent,
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
+            Icon(Icons.logout_rounded, color: Colors.red),
+            SizedBox(width: 12),
+            Text('Logout'),
           ],
         ),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+          ),
+          GradientButton(
+            text: 'Logout',
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(context, '/');
+            },
+            gradient: const LinearGradient(
+              colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+            ),
+            height: 40,
+            textStyle: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
