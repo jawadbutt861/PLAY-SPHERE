@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../main.dart';
 
-class Notifications extends StatefulWidget {
-  const Notifications({super.key});
+class ManagerNotifications extends StatefulWidget {
+  const ManagerNotifications({super.key});
 
   @override
-  State<Notifications> createState() => _NotificationsState();
+  State<ManagerNotifications> createState() => _ManagerNotificationsState();
 }
 
-class _NotificationsState extends State<Notifications> {
+class _ManagerNotificationsState extends State<ManagerNotifications> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -18,7 +18,7 @@ class _NotificationsState extends State<Notifications> {
       backgroundColor: colorScheme.surface,
       appBar: const ModernAppBar(
         title: 'Notifications',
-        gradient: AppTheme.primaryGradient,
+        gradient: AppTheme.secondaryGradient,
       ),
       body: Center(
         child: Padding(
@@ -29,11 +29,11 @@ class _NotificationsState extends State<Notifications> {
               Container(
                 padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
+                  gradient: AppTheme.secondaryGradient,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                      color: AppTheme.secondaryColor.withValues(alpha: 0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),

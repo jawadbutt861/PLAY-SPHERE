@@ -92,7 +92,7 @@ class _UserMainState extends State<UserMain> with TickerProviderStateMixin {
         backgroundColor: colorScheme.surface,
         extendBody: true,
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight + 20),
+          preferredSize: const Size.fromHeight(kToolbarHeight + 50),
           child: Container(
             decoration: BoxDecoration(
               gradient: AppTheme.primaryGradient,
@@ -103,62 +103,56 @@ class _UserMainState extends State<UserMain> with TickerProviderStateMixin {
             ),
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // Profile Button
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: IconButton(
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(),
                         onPressed: () {
                           Navigator.pushNamed(context, '/Profile');
                         },
                         icon: const Icon(
                           Icons.person_outline_rounded,
                           color: Colors.white,
-                          size: 24,
+                          size: 22,
                         ),
                       ),
                     ),
                     
+                    const SizedBox(width: 8),
+                    
                     // Title Section
                     Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            "PlaySphere",
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      child: Center(
+                        child: SizedBox(
+                          height: 110,
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            fit: BoxFit.contain,
                           ),
-                          const SizedBox(height: 2),
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            child: Text(
-                              navigationItems[index].title,
-                              key: ValueKey(index),
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
+                    
+                    const SizedBox(width: 8),
                     
                     // Notifications Button
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: IconButton(
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(),
                         onPressed: () {
                           Navigator.pushNamed(context, '/Notifications');
                         },
@@ -167,7 +161,7 @@ class _UserMainState extends State<UserMain> with TickerProviderStateMixin {
                             const Icon(
                               Icons.notifications_outlined,
                               color: Colors.white,
-                              size: 24,
+                              size: 22,
                             ),
                             Positioned(
                               right: 0,

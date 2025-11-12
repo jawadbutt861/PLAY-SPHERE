@@ -3,21 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../../main.dart';
-import '../../../services/auth_service.dart';
+import '../../main.dart';
+import '../../services/auth_service.dart';
 
-class Profile extends StatefulWidget {
-  const Profile({super.key});
+class ManagerProfile extends StatefulWidget {
+  const ManagerProfile({super.key});
 
   @override
-  State<Profile> createState() => _ProfileState();
+  State<ManagerProfile> createState() => _ManagerProfileState();
 }
 
-class _ProfileState extends State<Profile> {
+class _ManagerProfileState extends State<ManagerProfile> {
   final AuthService _authService = AuthService();
   final ImagePicker _picker = ImagePicker();
   File? _image;
-  String _userName = 'User';
+  String _userName = 'Manager';
   String _userEmail = '';
 
   @override
@@ -33,7 +33,7 @@ class _ProfileState extends State<Profile> {
     if (user != null) {
       setState(() {
         // Load name and email from Firebase Auth
-        _userName = user.displayName ?? 'User';
+        _userName = user.displayName ?? 'Manager';
         _userEmail = user.email ?? '';
       });
       
@@ -115,7 +115,7 @@ class _ProfileState extends State<Profile> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Row(
               children: [
-                Icon(Icons.lock_rounded, color: AppTheme.primaryColor),
+                Icon(Icons.lock_rounded, color: AppTheme.secondaryColor),
                 SizedBox(width: 12),
                 Text('Change Password'),
               ],
@@ -129,7 +129,7 @@ class _ProfileState extends State<Profile> {
                     labelText: 'Current Password',
                     filled: true,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                    prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.primaryColor),
+                    prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.secondaryColor),
                   ),
                   obscureText: true,
                   enabled: !isChanging,
@@ -141,7 +141,7 @@ class _ProfileState extends State<Profile> {
                     labelText: 'New Password',
                     filled: true,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                    prefixIcon: const Icon(Icons.lock_reset, color: AppTheme.primaryColor),
+                    prefixIcon: const Icon(Icons.lock_reset, color: AppTheme.secondaryColor),
                     helperText: 'Minimum 8 characters',
                   ),
                   obscureText: true,
@@ -154,7 +154,7 @@ class _ProfileState extends State<Profile> {
                     labelText: 'Confirm New Password',
                     filled: true,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                    prefixIcon: const Icon(Icons.check_circle_outline, color: AppTheme.primaryColor),
+                    prefixIcon: const Icon(Icons.check_circle_outline, color: AppTheme.secondaryColor),
                   ),
                   obscureText: true,
                   enabled: !isChanging,
@@ -237,7 +237,7 @@ class _ProfileState extends State<Profile> {
                           _showSnackBar('An error occurred', AppTheme.errorColor, Icons.error_outline);
                         }
                       },
-                      gradient: AppTheme.primaryGradient,
+                      gradient: AppTheme.secondaryGradient,
                       height: 44,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       textStyle: const TextStyle(
@@ -253,6 +253,72 @@ class _ProfileState extends State<Profile> {
     );
   }
 
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: Colors.red),
+            SizedBox(width: 12),
+            Text('Logout'),
+          ],
+        ),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+          ),
+          GradientButton(
+            text: 'Logout',
+            onPressed: () async {
+              Navigator.pop(context);
+              
+              // Show loading dialog
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+
+              // Sign out from Firebase
+              await _authService.signOut();
+
+              if (mounted) {
+                // Close loading dialog
+                Navigator.pop(context);
+                
+                // Navigate to role selection and clear stack
+                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                
+                // Show success message
+                _showSnackBar(
+                  'Logged out successfully',
+                  AppTheme.successColor,
+                  Icons.check_circle_outline,
+                );
+              }
+            },
+            gradient: const LinearGradient(
+              colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+            ),
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            textStyle: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -261,7 +327,8 @@ class _ProfileState extends State<Profile> {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: const ModernAppBar(
-        title: 'My Profile',
+        title: 'Manager Profile',
+        gradient: AppTheme.secondaryGradient,
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -269,9 +336,9 @@ class _ProfileState extends State<Profile> {
             // Profile Header with Gradient Background
             Container(
               width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                borderRadius: const BorderRadius.only(
+              decoration: const BoxDecoration(
+                gradient: AppTheme.secondaryGradient,
+                borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(32),
                   bottomRight: Radius.circular(32),
                 ),
@@ -309,11 +376,11 @@ class _ProfileState extends State<Profile> {
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                gradient: AppTheme.secondaryGradient,
+                                gradient: AppTheme.accentGradient,
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppTheme.secondaryColor.withValues(alpha: 0.3),
+                                    color: AppTheme.accentColor.withValues(alpha: 0.3),
                                     blurRadius: 8,
                                     offset: const Offset(0, 4),
                                   ),
@@ -361,24 +428,34 @@ class _ProfileState extends State<Profile> {
                     margin: const EdgeInsets.only(bottom: 12),
                     child: _buildProfileOption(
                       context,
-                      icon: Icons.favorite_rounded,
-                      title: 'Favourite Venues',
-                      subtitle: 'Your saved venues',
-                      gradient: AppTheme.accentGradient,
-                      onTap: () => Navigator.pushNamed(context, '/Favourite'),
+                      icon: Icons.business_rounded,
+                      title: 'My Venues',
+                      subtitle: 'Manage your venues',
+                      gradient: AppTheme.secondaryGradient,
+                      onTap: () {
+                        // Navigate to venues
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Venues feature coming soon')),
+                        );
+                      },
                     ),
                   ),
                   ModernCard(
                     margin: const EdgeInsets.only(bottom: 12),
                     child: _buildProfileOption(
                       context,
-                      icon: Icons.history_rounded,
-                      title: 'Booking History',
-                      subtitle: 'View past bookings',
+                      icon: Icons.calendar_today_rounded,
+                      title: 'Bookings',
+                      subtitle: 'View venue bookings',
                       gradient: const LinearGradient(
                         colors: [Color(0xFF8B5CF6), Color(0xFFA855F7)],
                       ),
-                      onTap: () => Navigator.pushNamed(context, '/BookingHistory'),
+                      onTap: () {
+                        // Navigate to bookings
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Bookings feature coming soon')),
+                        );
+                      },
                     ),
                   ),
                   ModernCard(
@@ -388,7 +465,7 @@ class _ProfileState extends State<Profile> {
                       icon: Icons.lock_rounded,
                       title: 'Change Password',
                       subtitle: 'Update your password',
-                      gradient: AppTheme.secondaryGradient,
+                      gradient: AppTheme.accentGradient,
                       onTap: _showChangePasswordDialog,
                     ),
                   ),
@@ -402,9 +479,7 @@ class _ProfileState extends State<Profile> {
                       gradient: const LinearGradient(
                         colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
                       ),
-                      onTap: () {
-                        _showLogoutDialog();
-                      },
+                      onTap: _showLogoutDialog,
                     ),
                   ),
                 ],
@@ -474,72 +549,6 @@ class _ProfileState extends State<Profile> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.logout_rounded, color: Colors.red),
-            SizedBox(width: 12),
-            Text('Logout'),
-          ],
-        ),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
-          ),
-          GradientButton(
-            text: 'Logout',
-            onPressed: () async {
-              Navigator.pop(context);
-              
-              // Show loading dialog
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
-
-              // Sign out from Firebase
-              await _authService.signOut();
-
-              if (mounted) {
-                // Close loading dialog
-                Navigator.pop(context);
-                
-                // Navigate to role selection and clear stack
-                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                
-                // Show success message
-                _showSnackBar(
-                  'Logged out successfully',
-                  AppTheme.successColor,
-                  Icons.check_circle_outline,
-                );
-              }
-            },
-            gradient: const LinearGradient(
-              colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
-            ),
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            textStyle: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
       ),
     );
   }

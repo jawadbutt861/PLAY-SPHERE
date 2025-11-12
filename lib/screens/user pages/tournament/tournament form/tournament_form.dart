@@ -486,13 +486,14 @@ class _TournamentFormState extends State<TournamentForm> {
   Widget _buildTextField({required TextEditingController controller, required String hintText, String? Function(String?)? validator}) {
     return TextFormField(
       controller: controller,
-      style: const TextStyle(color: Colors.black), // Fix text color visibility
+      style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
         hintText: hintText,
         filled: true,
         fillColor: Colors.white,
         enabledBorder: _borderStyle(),
         focusedBorder: _borderStyle(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
       validator: validator,
     );
@@ -510,6 +511,7 @@ class _TournamentFormState extends State<TournamentForm> {
         fillColor: Colors.white,
         enabledBorder: _borderStyle(),
         focusedBorder: _borderStyle(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
       validator: (value) => value!.isEmpty ? "Please select date" : null,
     );
@@ -520,136 +522,135 @@ class _TournamentFormState extends State<TournamentForm> {
     
     if (filtered.isEmpty) {
       return const Center(
-        child: Text(
-          "No grounds available for selected sport",
-          style: TextStyle(fontSize: 16, color: Colors.grey),
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            "No grounds available for selected sport",
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
         ),
       );
     }
     
-    return SizedBox(
-      height: 400, // Fixed height to prevent scrolling issues
-      child: ListView.builder(
-        itemCount: filtered.length,
-        itemBuilder: (context, index) {
-          final g = filtered[index];
-          bool selected = selectedGrounds.any((sg) => sg['name'] == g['name']);
-          
-          return Card(
-            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            elevation: 2,
-            child: CheckboxListTile(
-              title: Text(
-                g['name'],
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-              subtitle: Text(
-                g['category'],
-                style: const TextStyle(color: Colors.grey),
-              ),
-              value: selected,
-              activeColor: const Color(0xFF1A659E),
-              onChanged: (v) {
-                setState(() {
-                  if (v == true) {
-                    selectedGrounds.add(g);
-                    selectedSlotsPerGround.putIfAbsent(g['name'], () => []);
-                  } else {
-                    selectedGrounds.removeWhere((sg) => sg['name'] == g['name']);
-                    selectedSlotsPerGround.remove(g['name']);
-                  }
-                });
-              },
+    return Column(
+      children: filtered.map((g) {
+        bool selected = selectedGrounds.any((sg) => sg['name'] == g['name']);
+        
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+          elevation: 2,
+          child: CheckboxListTile(
+            title: Text(
+              g['name'],
+              style: const TextStyle(fontWeight: FontWeight.w500),
             ),
-          );
-        },
-      ),
+            subtitle: Text(
+              g['category'],
+              style: const TextStyle(color: Colors.grey),
+            ),
+            value: selected,
+            activeColor: const Color(0xFF1A659E),
+            onChanged: (v) {
+              setState(() {
+                if (v == true) {
+                  selectedGrounds.add(g);
+                  selectedSlotsPerGround.putIfAbsent(g['name'], () => []);
+                } else {
+                  selectedGrounds.removeWhere((sg) => sg['name'] == g['name']);
+                  selectedSlotsPerGround.remove(g['name']);
+                }
+              });
+            },
+          ),
+        );
+      }).toList(),
     );
   }
 
   Widget _slotsSelectionStep() {
-    return SizedBox(
-      height: 400, // Fixed height to prevent scrolling issues
-      child: ListView.builder(
-        itemCount: selectedGrounds.length,
-        itemBuilder: (context, index) {
-          final g = selectedGrounds[index];
-          String gName = g['name'];
-          String category = g['category'];
-          List<String> available = getSlots(category);
-          List<String> picked = selectedSlotsPerGround[gName] ?? [];
-          
-          return Card(
-            margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-            elevation: 3,
-            child: ExpansionTile(
-              title: Text(
-                gName,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                "Selected: ${picked.length} slot(s) • ${category}",
-                style: const TextStyle(color: Colors.grey),
-              ),
-              children: available.map((slot) {
-                bool checked = picked.contains(slot);
-                bool isDisabled = false;
-                
-                // Handle cricket slot conflicts
-                if (category == "Cricket") {
-                  if (slot == "Full-day") {
-                    isDisabled = picked.contains("9am to 2pm") || picked.contains("2pm to 6pm");
-                  } else {
-                    isDisabled = picked.contains("Full-day");
-                  }
-                }
-                
-                return CheckboxListTile(
-                  title: Text(
-                    slot,
-                    style: TextStyle(
-                      color: isDisabled ? Colors.grey : Colors.black,
-                    ),
-                  ),
-                  subtitle: category == "Cricket" && isDisabled 
-                      ? Text(
-                          slot == "Full-day" 
-                              ? "Cannot select with individual slots" 
-                              : "Cannot select with full-day",
-                          style: const TextStyle(color: Colors.red, fontSize: 12),
-                        )
-                      : null,
-                  value: checked,
-                  activeColor: const Color(0xFF1A659E),
-                  onChanged: isDisabled ? null : (v) {
-                    setState(() {
-                      if (v == true) {
-                        // For cricket, clear conflicting slots
-                        if (category == "Cricket") {
-                          if (slot == "Full-day") {
-                            picked.removeWhere((s) => s == "9am to 2pm" || s == "2pm to 6pm");
-                          } else {
-                            picked.removeWhere((s) => s == "Full-day");
-                          }
-                        }
-                        picked.add(slot);
-                      } else {
-                        picked.remove(slot);
-                      }
-                      selectedSlotsPerGround[gName] = picked;
-                    });
-                  },
-                );
-              }).toList(),
+    return Column(
+      children: selectedGrounds.map((g) {
+        String gName = g['name'];
+        String category = g['category'];
+        List<String> available = getSlots(category);
+        List<String> picked = selectedSlotsPerGround[gName] ?? [];
+        
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+          elevation: 3,
+          child: ExpansionTile(
+            title: Text(
+              gName,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
-          );
-        },
-      ),
+            subtitle: Text(
+              "Selected: ${picked.length} slot(s) • ${category}",
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+            children: available.map((slot) {
+              bool checked = picked.contains(slot);
+              bool isDisabled = false;
+              
+              // Handle cricket slot conflicts
+              if (category == "Cricket") {
+                if (slot == "Full-day") {
+                  isDisabled = picked.contains("9am to 2pm") || picked.contains("2pm to 6pm");
+                } else {
+                  isDisabled = picked.contains("Full-day");
+                }
+              }
+              
+              return CheckboxListTile(
+                dense: true,
+                title: Text(
+                  slot,
+                  style: TextStyle(
+                    color: isDisabled ? Colors.grey : Colors.black,
+                    fontSize: 13,
+                  ),
+                ),
+                subtitle: category == "Cricket" && isDisabled 
+                    ? Text(
+                        slot == "Full-day" 
+                            ? "Cannot select with individual slots" 
+                            : "Cannot select with full-day",
+                        style: const TextStyle(color: Colors.red, fontSize: 11),
+                      )
+                    : null,
+                value: checked,
+                activeColor: const Color(0xFF1A659E),
+                onChanged: isDisabled ? null : (v) {
+                  setState(() {
+                    if (v == true) {
+                      // For cricket, clear conflicting slots
+                      if (category == "Cricket") {
+                        if (slot == "Full-day") {
+                          picked.removeWhere((s) => s == "9am to 2pm" || s == "2pm to 6pm");
+                        } else {
+                          picked.removeWhere((s) => s == "Full-day");
+                        }
+                      }
+                      picked.add(slot);
+                    } else {
+                      picked.remove(slot);
+                    }
+                    selectedSlotsPerGround[gName] = picked;
+                  });
+                },
+              );
+            }).toList(),
+          ),
+        );
+      }).toList(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final horizontalPadding = screenWidth > 600 ? 16.0 : 8.0;
+    final cardPadding = screenWidth > 600 ? 20.0 : 12.0;
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -665,7 +666,7 @@ class _TournamentFormState extends State<TournamentForm> {
         children: [
           // Progress indicator
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 12),
             color: Colors.white,
             child: Row(
               children: List.generate(5, (index) {
@@ -685,12 +686,12 @@ class _TournamentFormState extends State<TournamentForm> {
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(horizontalPadding),
               child: Card(
                 elevation: 8,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(cardPadding),
                   child: Stepper(
                     currentStep: currentStep,
                     onStepContinue: _nextStep,
@@ -700,14 +701,19 @@ class _TournamentFormState extends State<TournamentForm> {
                     controlsBuilder: (context, details) {
                       return Padding(
                         padding: const EdgeInsets.only(top: 16),
-                        child: Row(
+                        child: Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
                           children: [
                             ElevatedButton(
                               onPressed: details.onStepContinue,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF1A659E),
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: screenWidth > 600 ? 32 : 24, 
+                                  vertical: 12
+                                ),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
                               child: Text(
@@ -715,14 +721,16 @@ class _TournamentFormState extends State<TournamentForm> {
                                 style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ),
-                            const SizedBox(width: 12),
                             if (currentStep > 0)
                               OutlinedButton(
                                 onPressed: details.onStepCancel,
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: const Color(0xFF1A659E),
                                   side: const BorderSide(color: Color(0xFF1A659E)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: screenWidth > 600 ? 32 : 24, 
+                                    vertical: 12
+                                  ),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
                                 child: const Text("Back", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -738,17 +746,25 @@ class _TournamentFormState extends State<TournamentForm> {
                         content: Form(
                           key: _formKey,
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               _buildLabel("Tournament Name"),
+                              const SizedBox(height: 4),
                               _buildTextField(
                                   controller: name,
                                   hintText: "e.g. Summer Soccer Clash",
                                   validator: (v) => v!.isEmpty ? "Required" : null),
                               const SizedBox(height: 12),
                               _buildLabel("Sport"),
+                              const SizedBox(height: 4),
                               DropdownButtonFormField<String>(
                                 value: selectedSport,
-                                decoration: InputDecoration(filled: true, fillColor: Colors.white, enabledBorder: _borderStyle()),
+                                decoration: InputDecoration(
+                                  filled: true, 
+                                  fillColor: Colors.white, 
+                                  enabledBorder: _borderStyle(),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                ),
                                 hint: const Text("Select a sport"),
                                 items: sports.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                                 onChanged: (v) => setState(() {
@@ -758,79 +774,112 @@ class _TournamentFormState extends State<TournamentForm> {
                               ),
                               const SizedBox(height: 12),
                               _buildLabel("Teams"),
+                              const SizedBox(height: 4),
                               DropdownButtonFormField<String>(
                                 value: selectedTeam,
-                                decoration: InputDecoration(filled: true, fillColor: Colors.white, enabledBorder: _borderStyle()),
+                                decoration: InputDecoration(
+                                  filled: true, 
+                                  fillColor: Colors.white, 
+                                  enabledBorder: _borderStyle(),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                ),
                                 hint: const Text("Select teams count"),
                                 items: teams.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                                 onChanged: (v) => setState(() => selectedTeam = v),
                               ),
                               const SizedBox(height: 12),
                               _buildLabel("Format"),
+                              const SizedBox(height: 4),
                               DropdownButtonFormField<String>(
                                 value: selectedFormat,
-                                decoration: InputDecoration(filled: true, fillColor: Colors.white, enabledBorder: _borderStyle()),
+                                decoration: InputDecoration(
+                                  filled: true, 
+                                  fillColor: Colors.white, 
+                                  enabledBorder: _borderStyle(),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                ),
                                 hint: const Text("Select format"),
                                 items: format.map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
                                 onChanged: (v) => setState(() => selectedFormat = v),
                               ),
                               const SizedBox(height: 12),
                               _buildLabel("Start Date"),
+                              const SizedBox(height: 4),
                               _buildDateField(controller: startDateController, onTap: () => _pickDate(context: context, isStart: true)),
                               const SizedBox(height: 12),
                               _buildLabel("End Date"),
+                              const SizedBox(height: 4),
                               _buildDateField(controller: endDateController, onTap: () => _pickDate(context: context, isStart: false)),
                             ],
                           ),
                         ),
                       ),
-                      Step(title: const Text("Teams"), isActive: currentStep >= 1, content: Column(children: [
-                        ...teamControllers.asMap().entries.map((e) {
-                          int idx = e.key + 1;
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            child: TextField(
-                              controller: e.value,
-                              style: const TextStyle(color: Colors.black), // Fix text color visibility
-                              decoration: InputDecoration(labelText: "Team $idx", filled: true, fillColor: Colors.white, enabledBorder: _borderStyle()),
-                            ),
-                          );
-                        }),
-                      ])),
+                      Step(
+                        title: const Text("Teams"), 
+                        isActive: currentStep >= 1, 
+                        content: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: teamControllers.asMap().entries.map((e) {
+                            int idx = e.key + 1;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: TextField(
+                                controller: e.value,
+                                style: const TextStyle(color: Colors.black),
+                                decoration: InputDecoration(
+                                  labelText: "Team $idx", 
+                                  filled: true, 
+                                  fillColor: Colors.white, 
+                                  enabledBorder: _borderStyle(),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
                       Step(title: const Text("Grounds"), isActive: currentStep >= 2, content: _groundsSelectionStep()),
                       Step(title: const Text("Slots"), isActive: currentStep >= 3, content: _slotsSelectionStep()),
                       Step(
                         title: const Text("Payment"),
                         isActive: currentStep >= 4,
                         content: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const Text("Select Payment Method", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            const Text(
+                              "Select Payment Method", 
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              textAlign: TextAlign.center,
+                            ),
                             const SizedBox(height: 16),
                             Card(
                               elevation: 2,
                               child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   ListTile(
+                                    dense: true,
                                     leading: Radio<String>(
                                       value: "JazzCash",
                                       groupValue: selectedPayment,
                                       onChanged: (v) => setState(() => selectedPayment = v),
                                       activeColor: const Color(0xFF1A659E),
                                     ),
-                                    title: const Text("JazzCash"),
-                                    subtitle: const Text("Mobile wallet payment"),
+                                    title: const Text("JazzCash", style: TextStyle(fontSize: 14)),
+                                    subtitle: const Text("Mobile wallet payment", style: TextStyle(fontSize: 12)),
                                     onTap: () => setState(() => selectedPayment = "JazzCash"),
                                   ),
                                   const Divider(height: 1),
                                   ListTile(
+                                    dense: true,
                                     leading: Radio<String>(
                                       value: "EasyPaisa",
                                       groupValue: selectedPayment,
                                       onChanged: (v) => setState(() => selectedPayment = v),
                                       activeColor: const Color(0xFF1A659E),
                                     ),
-                                    title: const Text("EasyPaisa"),
-                                    subtitle: const Text("Mobile wallet payment"),
+                                    title: const Text("EasyPaisa", style: TextStyle(fontSize: 14)),
+                                    subtitle: const Text("Mobile wallet payment", style: TextStyle(fontSize: 12)),
                                     onTap: () => setState(() => selectedPayment = "EasyPaisa"),
                                   ),
                                 ],

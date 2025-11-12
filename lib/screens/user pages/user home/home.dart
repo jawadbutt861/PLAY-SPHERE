@@ -283,7 +283,6 @@ class _HomeState extends State<Home> {
                         const SizedBox(height: 24),
                         GradientButton(
                           text: "Book Venue",
-                          icon: Icons.sports_soccer_rounded,
                           gradient: const LinearGradient(
                             colors: [Colors.white, Colors.white],
                           ),
@@ -394,7 +393,7 @@ class _HomeState extends State<Home> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 100,
+        height: 106,
         decoration: BoxDecoration(
           gradient: gradient,
           borderRadius: BorderRadius.circular(16),

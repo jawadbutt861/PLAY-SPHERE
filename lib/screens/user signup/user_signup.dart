@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../main.dart';
+import '../../services/auth_service.dart';
 
 class UserSignup extends StatefulWidget {
   const UserSignup({super.key});
@@ -10,255 +11,360 @@ class UserSignup extends StatefulWidget {
 
 class _SignupState extends State<UserSignup> {
   bool showPass = true;
-  int selected = 0;
-
+  bool isLoading = false;
 
   final formkey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
 
-  TextEditingController fullName = TextEditingController();
-  TextEditingController eMail = TextEditingController();
-  TextEditingController cnic = TextEditingController();
-  TextEditingController mobileNo = TextEditingController();
-  TextEditingController password = TextEditingController();
-  TextEditingController role = TextEditingController();
+  final TextEditingController fullName = TextEditingController();
+  final TextEditingController eMail = TextEditingController();
+  final TextEditingController mobileNo = TextEditingController();
+  final TextEditingController password = TextEditingController();
+
+  @override
+  void dispose() {
+    fullName.dispose();
+    eMail.dispose();
+    mobileNo.dispose();
+    password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSignup() async {
+    if (!formkey.currentState!.validate()) return;
+
+    setState(() => isLoading = true);
+
+    final userCredential = await _authService.signUpWithEmail(
+      email: eMail.text,
+      password: password.text,
+      context: context,
+    );
+
+    if (userCredential != null) {
+      // Update user profile with display name
+      await _authService.updateProfile(displayName: fullName.text.trim());
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Account created successfully!',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+
+        // Navigate to login
+        Navigator.pushReplacementNamed(context, '/UserLogIn');
+      }
+    }
+
+    setState(() => isLoading = false);
+  }
+  
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final size = MediaQuery.of(context).size;
     
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        width: size.width,
+        height: size.height,
+        decoration: const BoxDecoration(
           gradient: AppTheme.primaryGradient,
         ),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Form(
-                key: formkey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Logo and Welcome Section
-                    Container(
-                      padding: const EdgeInsets.all(32),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          width: 1,
-                        ),
-                      ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.symmetric(
+                  horizontal: size.width * 0.06,
+                  vertical: size.height * 0.02,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Form(
+                      key: formkey,
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          SizedBox(height: size.height * 0.02),
+                          
+                          // Logo and Welcome Section
                           Container(
-                            width: 80,
-                            height: 80,
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: size.width * 0.08,
+                              vertical: size.height * 0.03,
+                            ),
                             decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 8),
+                              color: Colors.white.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: size.width * 0.18,
+                                  height: size.width * 0.18,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 60,
+                                    maxWidth: 80,
+                                    minHeight: 60,
+                                    maxHeight: 80,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.1),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 8),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.sports_soccer_rounded,
+                                    size: size.width * 0.09,
+                                    color: AppTheme.primaryColor,
+                                  ),
+                                ),
+                                SizedBox(height: size.height * 0.02),
+                                Text(
+                                  "PlaySphere",
+                                  style: theme.textTheme.headlineLarge?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: size.width * 0.07,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: size.height * 0.01),
+                                Text(
+                                  "Join the Game!",
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: size.width * 0.04,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ],
                             ),
-                            child: Icon(
-                              Icons.sports_soccer_rounded,
-                              size: 40,
-                              color: AppTheme.primaryColor,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            "PlaySphere",
-                            style: theme.textTheme.headlineLarge?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Join the Game!",
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.9),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 40),
-                    
-                    // Signup Form Card
-                    ModernCard(
-                      margin: EdgeInsets.zero,
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            "Create Account",
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onSurface,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 32),
-              
-                          TextFormField(
-                            controller: fullName,
-                            keyboardType: TextInputType.name,
-                            decoration: InputDecoration(
-                              prefixIcon: Icon(
-                                Icons.person_outline_rounded,
-                                color: AppTheme.primaryColor,
-                              ),
-                              hintText: 'Enter your full name',
-                              labelText: 'Full Name',
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return "Please enter your full name";
-                              }
-                              return null;
-                            },
                           ),
                           
-                          const SizedBox(height: 24),
+                          SizedBox(height: size.height * 0.03),
                           
-                          TextFormField(
-                            controller: eMail,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: InputDecoration(
-                              prefixIcon: Icon(
-                                Icons.email_outlined,
-                                color: AppTheme.primaryColor,
-                              ),
-                              hintText: 'Enter your email address',
-                              labelText: 'Email',
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return "Please enter email";
-                              }
-                              if (!value.contains('@')) {
-                                return "Invalid email";
-                              }
-                              return null;
-                            },
-                          ),
-                          
-                          const SizedBox(height: 24),
-                          
-                          TextFormField(
-                            controller: mobileNo,
-                            keyboardType: TextInputType.phone,
-                            decoration: InputDecoration(
-                              prefixIcon: Icon(
-                                Icons.phone_outlined,
-                                color: AppTheme.primaryColor,
-                              ),
-                              hintText: 'e.g., 03124567890',
-                              labelText: 'Mobile Number',
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return "Please enter mobile number";
-                              }
-                              if (value.length != 11) {
-                                return "Mobile number must be 11 digits";
-                              }
-                              return null;
-                            },
-                          ),
-                          
-                          const SizedBox(height: 24),
-                          
-                          TextFormField(
-                            controller: password,
-                            obscureText: showPass,
-                            decoration: InputDecoration(
-                              prefixIcon: Icon(
-                                Icons.lock_outline_rounded,
-                                color: AppTheme.primaryColor,
-                              ),
-                              suffixIcon: IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    showPass = !showPass;
-                                  });
-                                },
-                                icon: Icon(
-                                  showPass ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              hintText: 'Enter your password',
-                              labelText: 'Password',
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return "Please enter password";
-                              }
-                              if (value.length < 8) {
-                                return "Password must be at least 8 characters";
-                              }
-                              return null;
-                            },
-                          ),
-                          
-                          const SizedBox(height: 32),
-                          
-                          GradientButton(
-                            text: "Create Account",
-                            icon: Icons.person_add_rounded,
-                            onPressed: () {
-                              if (formkey.currentState!.validate()) {
-                                Navigator.pushReplacementNamed(context, '/UserLogIn');
-                              }
-                            },
-                            width: double.infinity,
-                            height: 56,
-                          ),
-                          
-                          const SizedBox(height: 24),
-                          
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "Already have an account? ",
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pushReplacementNamed(context, '/UserLogIn');
-                                },
-                                child: Text(
-                                  "Sign In",
-                                  style: TextStyle(
-                                    color: AppTheme.primaryColor,
-                                    fontWeight: FontWeight.w600,
+                          // Signup Form Card
+                          ModernCard(
+                            margin: EdgeInsets.zero,
+                            padding: EdgeInsets.all(size.width * 0.06),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  "Create Account",
+                                  style: theme.textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.onSurface,
+                                    fontSize: size.width * 0.055,
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
-                              ),
-                            ],
+                                SizedBox(height: size.height * 0.025),
+                    
+                                TextFormField(
+                                  controller: fullName,
+                                  keyboardType: TextInputType.name,
+                                  decoration: const InputDecoration(
+                                    prefixIcon: Icon(
+                                      Icons.person_outline_rounded,
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                    hintText: 'Enter your full name',
+                                    labelText: 'Full Name',
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "Please enter your full name";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                
+                                SizedBox(height: size.height * 0.02),
+                                
+                                TextFormField(
+                                  controller: eMail,
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: const InputDecoration(
+                                    prefixIcon: Icon(
+                                      Icons.email_outlined,
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                    hintText: 'Enter your email',
+                                    labelText: 'Email',
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "Please enter email";
+                                    }
+                                    if (!value.contains('@')) {
+                                      return "Invalid email";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                
+                                SizedBox(height: size.height * 0.02),
+                                
+                                TextFormField(
+                                  controller: mobileNo,
+                                  keyboardType: TextInputType.phone,
+                                  decoration: const InputDecoration(
+                                    prefixIcon: Icon(
+                                      Icons.phone_outlined,
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                    hintText: 'e.g., 03124567890',
+                                    labelText: 'Mobile Number',
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "Please enter mobile number";
+                                    }
+                                    if (value.length != 11) {
+                                      return "Must be 11 digits";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                
+                                SizedBox(height: size.height * 0.02),
+                                
+                                TextFormField(
+                                  controller: password,
+                                  obscureText: showPass,
+                                  decoration: InputDecoration(
+                                    prefixIcon: const Icon(
+                                      Icons.lock_outline_rounded,
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                    suffixIcon: IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          showPass = !showPass;
+                                        });
+                                      },
+                                      icon: Icon(
+                                        showPass ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    hintText: 'Enter your password',
+                                    labelText: 'Password',
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "Please enter password";
+                                    }
+                                    if (value.length < 8) {
+                                      return "Password must be 8+ characters";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                
+                                SizedBox(height: size.height * 0.025),
+                                
+                                isLoading
+                                    ? const Center(
+                                        child: CircularProgressIndicator(
+                                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                                        ),
+                                      )
+                                    : GradientButton(
+                                        text: "Create Account",
+                                        icon: Icons.person_add_rounded,
+                                        onPressed: _handleSignup,
+                                        width: double.infinity,
+                                        height: 56,
+                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                        textStyle: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: size.width * 0.042,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                
+                                SizedBox(height: size.height * 0.02),
+                                
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text(
+                                      "Already have an account? ",
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                        fontSize: size.width * 0.035,
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pushReplacementNamed(context, '/UserLogIn');
+                                      },
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: Text(
+                                        "Sign In",
+                                        style: TextStyle(
+                                          color: AppTheme.primaryColor,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: size.width * 0.035,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
+                          
+                          SizedBox(height: size.height * 0.02),
                         ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       ),

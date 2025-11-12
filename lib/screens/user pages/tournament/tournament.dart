@@ -111,7 +111,7 @@ class _TournamentState extends State<Tournament> {
                   }
                 },
                 width: double.infinity,
-                height: 56,
+                height: 65,
               ),
             ),
             const SizedBox(height: 120), // Add bottom padding to avoid bottom nav
@@ -533,23 +533,31 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
     String winner = match['winner'] ?? '';
     String matchType = match['matchType'] ?? 'regular';
     
-    Color cardColor = Colors.white;
-    Color statusColor = Colors.orange;
-    String statusText = 'Scheduled';
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    Color cardColor;
+    Color statusColor;
+    String statusText;
     
     if (status == 'completed') {
-      cardColor = Colors.green.shade50;
+      cardColor = Colors.green.withValues(alpha: 0.1);
       statusColor = Colors.green;
       if (result == 'abandoned') {
         statusText = 'Abandoned';
         statusColor = Colors.grey;
+        cardColor = colorScheme.surfaceContainerHighest;
       } else {
         statusText = 'Completed';
       }
     } else if (status == 'in_progress') {
-      cardColor = Colors.blue.shade50;
+      cardColor = Colors.blue.withValues(alpha: 0.1);
       statusColor = Colors.blue;
       statusText = 'In Progress';
+    } else {
+      cardColor = colorScheme.surface;
+      statusColor = Colors.orange;
+      statusText = 'Scheduled';
     }
 
     return Card(
@@ -558,11 +566,14 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.spaceBetween,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -574,23 +585,22 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                     _getMatchTypeLabel(matchType),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
+                    color: statusColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     statusText,
                     style: TextStyle(
                       color: statusColor,
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -606,26 +616,32 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                       Text(
                         team1,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: winner == team1 ? Colors.green : Colors.black,
+                          color: winner == team1 ? Colors.green : colorScheme.onSurface,
                         ),
                         textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       if (winner == team1)
-                        const Icon(Icons.emoji_events, color: Colors.amber, size: 20),
+                        const Icon(Icons.emoji_events, color: Colors.amber, size: 18),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
+                    color: colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
+                  child: Text(
                     "VS",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 12,
+                      color: colorScheme.onSurface,
+                    ),
                   ),
                 ),
                 Expanded(
@@ -634,53 +650,70 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                       Text(
                         team2,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: winner == team2 ? Colors.green : Colors.black,
+                          color: winner == team2 ? Colors.green : colorScheme.onSurface,
                         ),
                         textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       if (winner == team2)
-                        const Icon(Icons.emoji_events, color: Colors.amber, size: 20),
+                        const Icon(Icons.emoji_events, color: Colors.amber, size: 18),
                     ],
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
               children: [
-                Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(
-                  match['ground'] ?? 'TBD',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.location_on, size: 14, color: colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        match['ground'] ?? 'TBD',
+                        style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(
-                  "${match['date'] ?? 'TBD'} • ${match['time'] ?? 'TBD'}",
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.access_time, size: 14, color: colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        "${match['date'] ?? 'TBD'} • ${match['time'] ?? 'TBD'}",
+                        style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
             if (status == 'scheduled' && team1 != 'BYE' && team2 != 'BYE') ...[
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => _showResultDialog(index, team1, team2),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1A659E),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: const Text("Update Result"),
-                    ),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => _showResultDialog(index, team1, team2),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
-                ],
+                  child: const Text("Update Result", style: TextStyle(fontSize: 13)),
+                ),
               ),
             ],
           ],
@@ -716,63 +749,299 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
   }
 
   void _showResultDialog(int matchIndex, String team1, String team2) {
+    final team1ScoreController = TextEditingController();
+    final team2ScoreController = TextEditingController();
+    String? selectedResult;
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Match Result: $team1 vs $team2"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.emoji_events, color: Colors.green),
-                title: Text("$team1 Wins"),
-                onTap: () {
-                  _updateMatchResult(matchIndex, 'win', team1);
-                  Navigator.pop(context);
-                },
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text(
+                "Match Result",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              ListTile(
-                leading: const Icon(Icons.emoji_events, color: Colors.green),
-                title: Text("$team2 Wins"),
-                onTap: () {
-                  _updateMatchResult(matchIndex, 'win', team2);
-                  Navigator.pop(context);
-                },
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      "$team1 vs $team2",
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "Enter Scores (Optional)",
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(team1, style: const TextStyle(fontSize: 12)),
+                              const SizedBox(height: 4),
+                              TextField(
+                                controller: team1ScoreController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  hintText: "0",
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+                          child: Text("-", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(team2, style: const TextStyle(fontSize: 12)),
+                              const SizedBox(height: 4),
+                              TextField(
+                                controller: team2ScoreController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  hintText: "0",
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "Select Result",
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () {
+                        setDialogState(() => selectedResult = 'team1');
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: selectedResult == 'team1' ? Colors.green.withOpacity(0.1) : null,
+                          border: Border.all(
+                            color: selectedResult == 'team1' ? Colors.green : Colors.grey,
+                            width: selectedResult == 'team1' ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.emoji_events, 
+                              color: selectedResult == 'team1' ? Colors.green : Colors.grey, 
+                              size: 20
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                "$team1 Wins",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: selectedResult == 'team1' ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () {
+                        setDialogState(() => selectedResult = 'team2');
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: selectedResult == 'team2' ? Colors.green.withOpacity(0.1) : null,
+                          border: Border.all(
+                            color: selectedResult == 'team2' ? Colors.green : Colors.grey,
+                            width: selectedResult == 'team2' ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.emoji_events, 
+                              color: selectedResult == 'team2' ? Colors.green : Colors.grey, 
+                              size: 20
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                "$team2 Wins",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: selectedResult == 'team2' ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () {
+                        setDialogState(() => selectedResult = 'draw');
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: selectedResult == 'draw' ? Colors.blue.withOpacity(0.1) : null,
+                          border: Border.all(
+                            color: selectedResult == 'draw' ? Colors.blue : Colors.grey,
+                            width: selectedResult == 'draw' ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.handshake, 
+                              color: selectedResult == 'draw' ? Colors.blue : Colors.grey, 
+                              size: 20
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                "Draw",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: selectedResult == 'draw' ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () {
+                        setDialogState(() => selectedResult = 'abandoned');
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: selectedResult == 'abandoned' ? Colors.grey.withOpacity(0.1) : null,
+                          border: Border.all(
+                            color: selectedResult == 'abandoned' ? Colors.grey : Colors.grey.shade400,
+                            width: selectedResult == 'abandoned' ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.cancel, 
+                              color: selectedResult == 'abandoned' ? Colors.grey : Colors.grey.shade400, 
+                              size: 20
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                "Match Abandoned",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: selectedResult == 'abandoned' ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              ListTile(
-                leading: const Icon(Icons.cancel, color: Colors.grey),
-                title: const Text("Match Abandoned"),
-                onTap: () {
-                  _updateMatchResult(matchIndex, 'abandoned', null);
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: selectedResult == null ? null : () {
+                    int? team1Score = team1ScoreController.text.isNotEmpty 
+                        ? int.tryParse(team1ScoreController.text) 
+                        : null;
+                    int? team2Score = team2ScoreController.text.isNotEmpty 
+                        ? int.tryParse(team2ScoreController.text) 
+                        : null;
+                    
+                    String? winner;
+                    String result = selectedResult!;
+                    
+                    if (result == 'team1') {
+                      winner = team1;
+                      result = 'win';
+                    } else if (result == 'team2') {
+                      winner = team2;
+                      result = 'win';
+                    }
+                    
+                    _updateMatchResult(matchIndex, result, winner, team1Score, team2Score);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text("Submit"),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
-  void _updateMatchResult(int matchIndex, String result, String? winner) {
+  void _updateMatchResult(int matchIndex, String result, String? winner, int? team1Score, int? team2Score) {
     String tournamentId = widget.tournament['id'];
-    GlobalData.updateMatchResult(tournamentId, matchIndex, result, winnerTeam: winner);
+    GlobalData.updateMatchResult(
+      tournamentId, 
+      matchIndex, 
+      result, 
+      winnerTeam: winner,
+      team1Score: team1Score,
+      team2Score: team2Score,
+    );
     setState(() {}); // Refresh the UI
+    
+    String message;
+    if (result == 'abandoned') {
+      message = "Match marked as abandoned. Each team gets 1 point.";
+    } else if (result == 'draw') {
+      message = "Match ended in a draw. Each team gets 1 point.";
+    } else {
+      message = "$winner wins! 3 points awarded.";
+    }
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          result == 'abandoned' 
-              ? "Match marked as abandoned. Each team gets 1 point."
-              : "$winner wins! 2 points awarded.",
-        ),
+        content: Text(message),
+        backgroundColor: result == 'abandoned' ? Colors.grey : AppTheme.primaryColor,
       ),
     );
   }
@@ -780,12 +1049,30 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
   Widget _buildPointsTab() {
     String tournamentId = widget.tournament['id'];
     List<Map<String, dynamic>> pointsTable = GlobalData.getPointsTable(tournamentId);
+    Map<String, dynamic> stats = GlobalData.getTournamentStats(tournamentId);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     
     if (pointsTable.isEmpty) {
-      return const Center(
-        child: Text(
-          "No points data available yet",
-          style: TextStyle(fontSize: 16, color: Colors.grey),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.leaderboard_rounded, size: 80, color: colorScheme.onSurfaceVariant.withOpacity(0.3)),
+              const SizedBox(height: 16),
+              Text(
+                "No points data available yet",
+                style: TextStyle(fontSize: 16, color: colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Complete matches to see standings",
+                style: TextStyle(fontSize: 14, color: colorScheme.onSurfaceVariant.withOpacity(0.7)),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -795,106 +1082,204 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Points Table",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
+          // Tournament Progress Card
           Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1A659E),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-                  ),
-                  child: const Row(
-                    children: [
-                      SizedBox(width: 40, child: Text("Pos", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      Expanded(child: Text("Team", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      SizedBox(width: 50, child: Text("P", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                      SizedBox(width: 50, child: Text("W", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                      SizedBox(width: 50, child: Text("L", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                      SizedBox(width: 50, child: Text("A", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                      SizedBox(width: 60, child: Text("Pts", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                    ],
-                  ),
-                ),
-                ...pointsTable.asMap().entries.map((entry) {
-                  int index = entry.key;
-                  Map<String, dynamic> team = entry.value;
-                  
-                  Color rowColor = index == 0 ? Colors.amber.shade50 : Colors.white;
-                  if (index == 0) {
-                    // Champion styling
-                  } else if (index < 3) {
-                    rowColor = Colors.green.shade50;
-                  }
-                  
-                  return Container(
-                    color: rowColor,
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 40,
-                          child: Row(
-                            children: [
-                              Text(
-                                "${index + 1}",
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              if (index == 0) const Icon(Icons.emoji_events, color: Colors.amber, size: 16),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            team['team'],
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                        SizedBox(width: 50, child: Text("${team['played']}", textAlign: TextAlign.center)),
-                        SizedBox(width: 50, child: Text("${team['won']}", textAlign: TextAlign.center)),
-                        SizedBox(width: 50, child: Text("${team['lost']}", textAlign: TextAlign.center)),
-                        SizedBox(width: 50, child: Text("${team['abandoned']}", textAlign: TextAlign.center)),
-                        SizedBox(
-                          width: 60,
-                          child: Text(
-                            "${team['points']}",
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A659E)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
+            elevation: 2,
+            color: colorScheme.surfaceContainerHighest,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Scoring System",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  Row(
+                    children: [
+                      Icon(Icons.analytics_outlined, color: AppTheme.primaryColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Tournament Progress",
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatItem("Total", "${stats['total'] ?? 0}", Icons.sports, colorScheme),
+                      _buildStatItem("Completed", "${stats['completed'] ?? 0}", Icons.check_circle, colorScheme),
+                      _buildStatItem("Remaining", "${stats['scheduled'] ?? 0}", Icons.schedule, colorScheme),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: (stats['completed'] ?? 0) / (stats['total'] ?? 1),
+                      minHeight: 8,
+                      backgroundColor: Colors.grey.shade300,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  const Text("• Win: 2 points"),
-                  const Text("• Loss: 0 points"),
-                  const Text("• Abandoned: 1 point each team"),
+                  Text(
+                    "${stats['completionPercentage'] ?? '0.0'}% Complete",
+                    style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "Standings",
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Card(
+              elevation: 4,
+              color: colorScheme.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                    ),
+                    child: const Row(
+                      children: [
+                        SizedBox(width: 40, child: Text("Pos", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                        SizedBox(width: 120, child: Text("Team", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                        SizedBox(width: 35, child: Text("P", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.center)),
+                        SizedBox(width: 35, child: Text("W", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.center)),
+                        SizedBox(width: 35, child: Text("D", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.center)),
+                        SizedBox(width: 35, child: Text("L", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.center)),
+                        SizedBox(width: 40, child: Text("GF", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.center)),
+                        SizedBox(width: 40, child: Text("GA", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.center)),
+                        SizedBox(width: 40, child: Text("GD", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.center)),
+                        SizedBox(width: 45, child: Text("Pts", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.center)),
+                      ],
+                    ),
+                  ),
+                  ...pointsTable.asMap().entries.map((entry) {
+                    int index = entry.key;
+                    Map<String, dynamic> team = entry.value;
+                    
+                    Color rowColor;
+                    if (index == 0) {
+                      rowColor = Colors.amber.withValues(alpha: 0.15);
+                    } else if (index < 3) {
+                      rowColor = Colors.green.withValues(alpha: 0.1);
+                    } else if (index >= pointsTable.length - 2) {
+                      rowColor = Colors.red.withValues(alpha: 0.05);
+                    } else {
+                      rowColor = index.isEven ? colorScheme.surface : colorScheme.surfaceContainerHighest;
+                    }
+                    
+                    return Container(
+                      color: rowColor,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 40,
+                            child: Row(
+                              children: [
+                                Text(
+                                  "${index + 1}",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold, 
+                                    fontSize: 12,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                                if (index == 0) const Icon(Icons.emoji_events, color: Colors.amber, size: 14),
+                              ],
+                            ),
+                          ),
+                          SizedBox(
+                            width: 120,
+                            child: Text(
+                              team['team'],
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600, 
+                                fontSize: 12,
+                                color: colorScheme.onSurface,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          SizedBox(width: 35, child: Text("${team['played']}", textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: colorScheme.onSurface))),
+                          SizedBox(width: 35, child: Text("${team['won']}", textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600))),
+                          SizedBox(width: 35, child: Text("${team['drawn']}", textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w600))),
+                          SizedBox(width: 35, child: Text("${team['lost']}", textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.w600))),
+                          SizedBox(width: 40, child: Text("${team['goalsFor']}", textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: colorScheme.onSurface))),
+                          SizedBox(width: 40, child: Text("${team['goalsAgainst']}", textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: colorScheme.onSurface))),
+                          SizedBox(
+                            width: 40, 
+                            child: Text(
+                              "${team['goalDifference'] > 0 ? '+' : ''}${team['goalDifference']}", 
+                              textAlign: TextAlign.center, 
+                              style: TextStyle(
+                                fontSize: 12, 
+                                color: team['goalDifference'] > 0 ? Colors.green : team['goalDifference'] < 0 ? Colors.red : colorScheme.onSurface,
+                                fontWeight: FontWeight.w600,
+                              )
+                            )
+                          ),
+                          SizedBox(
+                            width: 45,
+                            child: Text(
+                              "${team['points']}",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold, 
+                                color: AppTheme.primaryColor, 
+                                fontSize: 13
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            color: colorScheme.surfaceContainerHighest,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Scoring System",
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  const Text(
-                    "Legend: P=Played, W=Won, L=Lost, A=Abandoned, Pts=Points",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  Text("• Win: 3 points", style: TextStyle(color: colorScheme.onSurface)),
+                  Text("• Draw: 1 point each team", style: TextStyle(color: colorScheme.onSurface)),
+                  Text("• Loss: 0 points", style: TextStyle(color: colorScheme.onSurface)),
+                  Text("• Abandoned: 1 point each team", style: TextStyle(color: colorScheme.onSurface)),
+                  const SizedBox(height: 12),
+                  Text(
+                    "Legend: P=Played, W=Won, D=Draw, L=Lost, GF=Goals For, GA=Goals Against, GD=Goal Difference, Pts=Points",
+                    style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -904,10 +1289,36 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
       ),
     );
   }
+  
+  Widget _buildStatItem(String label, String value, IconData icon, ColorScheme colorScheme) {
+    return Column(
+      children: [
+        Icon(icon, color: AppTheme.primaryColor, size: 20),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildScheduleTab() {
     String tournamentId = widget.tournament['id'];
     List<Map<String, dynamic>> matches = GlobalData.tournamentMatches[tournamentId] ?? [];
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     
     // Group matches by date
     Map<String, List<Map<String, dynamic>>> matchesByDate = {};
@@ -918,66 +1329,268 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
     }
     
     if (matchesByDate.isEmpty) {
-      return const Center(
-        child: Text(
-          "No schedule available",
-          style: TextStyle(fontSize: 16, color: Colors.grey),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.calendar_today_rounded, size: 80, color: colorScheme.onSurfaceVariant.withOpacity(0.3)),
+              const SizedBox(height: 16),
+              Text(
+                "No schedule available",
+                style: TextStyle(fontSize: 16, color: colorScheme.onSurfaceVariant),
+              ),
+            ],
+          ),
         ),
       );
     }
 
+    // Sort dates
+    List<String> sortedDates = matchesByDate.keys.toList();
+    sortedDates.sort((a, b) {
+      if (a == 'TBD') return 1;
+      if (b == 'TBD') return -1;
+      return a.compareTo(b);
+    });
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: matchesByDate.length,
+      itemCount: sortedDates.length,
       itemBuilder: (context, index) {
-        String date = matchesByDate.keys.elementAt(index);
+        String date = sortedDates[index];
         List<Map<String, dynamic>> dayMatches = matchesByDate[date]!;
+        
+        // Count match statuses for the day
+        int completedCount = dayMatches.where((m) => m['status'] == 'completed').length;
+        int totalCount = dayMatches.length;
+        bool isToday = date == DateTime.now().toString().split(' ')[0];
         
         return Card(
           margin: const EdgeInsets.only(bottom: 16),
+          elevation: 3,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF1A659E),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                decoration: BoxDecoration(
+                  gradient: isToday ? AppTheme.primaryGradient : null,
+                  color: isToday ? null : const Color(0xFF1A659E),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 ),
-                child: Text(
-                  date == 'TBD' ? 'To Be Determined' : date,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                date == 'TBD' ? 'To Be Determined' : _formatDate(date),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (isToday) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Text(
+                                    "TODAY",
+                                    style: TextStyle(
+                                      color: Color(0xFF1A659E),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "$completedCount of $totalCount matches completed",
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    CircularProgressIndicator(
+                      value: totalCount > 0 ? completedCount / totalCount : 0,
+                      backgroundColor: Colors.white.withOpacity(0.3),
+                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                      strokeWidth: 3,
+                    ),
+                  ],
                 ),
               ),
-              ...dayMatches.map((match) {
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: _getMatchTypeColor(match['matchType'] ?? 'regular'),
-                    child: Text(
-                      "${match['id']}",
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  title: Text("${match['team1']} vs ${match['team2']}"),
-                  subtitle: Text("${match['time'] ?? 'TBD'} • ${match['ground'] ?? 'TBD'}"),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              ...dayMatches.asMap().entries.map((entry) {
+                int matchIndex = entry.key;
+                Map<String, dynamic> match = entry.value;
+                bool isCompleted = match['status'] == 'completed';
+                
+                return InkWell(
+                  onTap: isCompleted ? null : () {
+                    // Find the global match index
+                    int globalIndex = matches.indexOf(match);
+                    if (globalIndex != -1 && match['team1'] != 'BYE' && match['team2'] != 'BYE') {
+                      _showResultDialog(globalIndex, match['team1'], match['team2']);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     decoration: BoxDecoration(
-                      color: _getMatchTypeColor(match['matchType'] ?? 'regular').withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      _getMatchTypeLabel(match['matchType'] ?? 'regular'),
-                      style: TextStyle(
-                        color: _getMatchTypeColor(match['matchType'] ?? 'regular'),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                      color: isCompleted 
+                          ? Colors.green.withOpacity(0.05) 
+                          : matchIndex.isEven 
+                              ? colorScheme.surface 
+                              : colorScheme.surfaceContainerHighest,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: colorScheme.outlineVariant.withOpacity(0.3),
+                          width: 0.5,
+                        ),
                       ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: _getMatchTypeColor(match['matchType'] ?? 'regular'),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Text(
+                              "${match['id']}",
+                              style: const TextStyle(
+                                color: Colors.white, 
+                                fontWeight: FontWeight.bold, 
+                                fontSize: 14
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      "${match['team1']} vs ${match['team2']}",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600, 
+                                        fontSize: 13,
+                                        color: colorScheme.onSurface,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (isCompleted && match['winner'] != null)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        match['result'] == 'draw' ? 'DRAW' : 'WIN',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(Icons.access_time, size: 12, color: colorScheme.onSurfaceVariant),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    match['time'] ?? 'TBD',
+                                    style: TextStyle(
+                                      color: colorScheme.onSurfaceVariant, 
+                                      fontSize: 11
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Icon(Icons.location_on, size: 12, color: colorScheme.onSurfaceVariant),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      match['ground'] ?? 'TBD',
+                                      style: TextStyle(
+                                        color: colorScheme.onSurfaceVariant, 
+                                        fontSize: 11
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (isCompleted && match['team1Score'] != null && match['team2Score'] != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Score: ${match['team1Score']} - ${match['team2Score']}",
+                                  style: TextStyle(
+                                    color: Colors.green,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: _getMatchTypeColor(match['matchType'] ?? 'regular').withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                _getMatchTypeLabel(match['matchType'] ?? 'regular'),
+                                style: TextStyle(
+                                  color: _getMatchTypeColor(match['matchType'] ?? 'regular'),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            if (isCompleted)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 4),
+                                child: Icon(Icons.check_circle, color: Colors.green, size: 16),
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -987,6 +1600,17 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
         );
       },
     );
+  }
+  
+  String _formatDate(String dateStr) {
+    try {
+      DateTime date = DateTime.parse(dateStr);
+      List<String> months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      List<String> days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      return "${days[date.weekday - 1]}, ${date.day} ${months[date.month - 1]} ${date.year}";
+    } catch (e) {
+      return dateStr;
+    }
   }
 
   IconData _getSportIcon(String sport) {

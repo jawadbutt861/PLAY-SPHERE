@@ -128,6 +128,7 @@ class _CategoriesState extends State<Categories> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
+              contentPadding: const EdgeInsets.all(20),
               title: Row(
                 children: [
                   Container(
@@ -136,7 +137,7 @@ class _CategoriesState extends State<Categories> {
                       gradient: AppTheme.primaryGradient,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.sports_outlined,
                       color: Colors.white,
                       size: 20,
@@ -145,20 +146,26 @@ class _CategoriesState extends State<Categories> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      "Book ${ground['name']}",
+                      "Book Venue",
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              content: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.85,
+                  maxHeight: MediaQuery.of(context).size.height * 0.6,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                     GradientButton(
                       text: selectedDate == null ? "Select Date" : "${selectedDate!.toLocal()}".split(' ')[0],
                       onPressed: () async {
@@ -187,6 +194,13 @@ class _CategoriesState extends State<Categories> {
                       },
                       icon: Icons.calendar_today,
                       width: double.infinity,
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      textStyle: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     if (selectedDate != null) ...[
                       const SizedBox(height: 16),
@@ -277,32 +291,35 @@ class _CategoriesState extends State<Categories> {
                         });
                       },
                     )),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               actions: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: Colors.grey[400]!),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.grey[400]!),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
+                          child: const Text("Cancel", style: TextStyle(fontSize: 13)),
                         ),
-                        child: const Text("Cancel"),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GradientButton(
-                        text: "Confirm",
-                        onPressed: () {
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: GradientButton(
+                          text: "Confirm",
+                          onPressed: () {
                           if (selectedDate != null && selectedSlot != null && selectedPayment != null) {
                             // Mark slot as booked
                             String dateKey = selectedDate!.toIso8601String().split('T')[0];
@@ -322,12 +339,15 @@ class _CategoriesState extends State<Categories> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.check_circle, color: Colors.white),
+                                    const Icon(Icons.check_circle, color: Colors.white, size: 20),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        "Booking confirmed for ${ground['name']} on ${selectedDate!.toLocal().toString().split(' ')[0]} at $selectedSlot",
+                                        "Booking confirmed!",
+                                        style: const TextStyle(color: Colors.white),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
@@ -337,17 +357,25 @@ class _CategoriesState extends State<Categories> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
+                                duration: const Duration(seconds: 2),
                               ),
                             );
                             Navigator.of(context).pop();
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: const Row(
+                                content: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.warning, color: Colors.white),
-                                    SizedBox(width: 8),
-                                    Text("Please select a date, slot, and payment method"),
+                                    const Icon(Icons.warning, color: Colors.white, size: 20),
+                                    const SizedBox(width: 8),
+                                    const Expanded(
+                                      child: Text(
+                                        "Please select all options",
+                                        style: TextStyle(color: Colors.white),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 backgroundColor: AppTheme.warningColor,
@@ -355,15 +383,23 @@ class _CategoriesState extends State<Categories> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
+                                duration: const Duration(seconds: 2),
                               ),
                             );
                           }
                         },
-                        icon: Icons.check,
-                        height: 44,
+                          
+                          height: 44,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          textStyle: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             );
@@ -616,12 +652,12 @@ class _CategoriesState extends State<Categories> {
                               GradientButton(
                                 text: "Book Now",
                                 onPressed: () => _showBookingDialog(ground),
-                                gradient: AppTheme.secondaryGradient,
-                                height: 36,
+                                height: 40,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 textStyle: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
