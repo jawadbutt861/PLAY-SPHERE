@@ -44,8 +44,8 @@ class MyApp extends StatelessWidget {
       title: 'PlaySphere',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      darkTheme: AppTheme.lightTheme,
+      themeMode: ThemeMode.dark,
       initialRoute: '/splash',
       routes: {
         '/splash' : (context) => const SplashScreen(),
@@ -90,11 +90,10 @@ class AppTheme {
   static const Color cardLight = Color(0xFFFFFFFF);         // White
   static const Color cardDark = Color(0xFF1A2F45);          // Navy Blue
   
-  // Text Colors
-  static const Color textPrimaryLight = Color.fromARGB(255, 245, 246, 248);  // Dark Navy
-  static const Color textPrimaryDark = Color(0xFFFFFFFF);   // White
-  static const Color textSecondaryLight = Color(0xFF5A6C7D); // Gray Blue
-  static const Color textSecondaryDark = Color(0xFFB2BAC2);  // Light Gray
+  // Unified Text Colors (same for both themes)
+  static const Color textPrimary = Color(0xFFFFFFFF);        // White
+  static const Color textSecondary = Color(0xFFB2BAC2);      // Light Gray
+  static const Color textTertiary = Color(0xFF8A9BA8);       // Medium Gray
   
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
@@ -122,56 +121,56 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
 
-  // Light Theme
+  // Unified Theme (works for both light and dark)
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
-      scaffoldBackgroundColor: backgroundLight,
-      colorScheme: const ColorScheme.light(
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: backgroundDark,
+      colorScheme: const ColorScheme.dark(
         primary: primaryColor,
-        primaryContainer: Color(0xFFE0F7FF),
+        primaryContainer: Color(0xFF004D66),
         secondary: secondaryColor,
-        secondaryContainer: Color(0xFFFFE5DB),
+        secondaryContainer: Color(0xFF993300),
         tertiary: accentColor,
-        tertiaryContainer: Color(0xFFFFF9E6),
+        tertiaryContainer: Color(0xFFCC9900),
         error: errorColor,
-        errorContainer: Color(0xFFFFEBEE),
-        surface: surfaceLight,
-        surfaceContainerHighest: Color(0xFFF5F7FA),
+        errorContainer: Color(0xFF990000),
+        surface: surfaceDark,
+        surfaceContainerHighest: Color(0xFF1A2F45),
         onPrimary: Colors.white,
         onSecondary: Colors.white,
-        onTertiary: textPrimaryLight,
+        onTertiary: Colors.white,
         onError: Colors.white,
-        onSurface: textPrimaryLight,
-        onSurfaceVariant: textSecondaryLight,
-        outline: Color(0xFFE0E7FF),
+        onSurface: textPrimary,
+        onSurfaceVariant: textSecondary,
+        outline: Color(0xFF2A4F65),
       ),
       
       // App Bar Theme
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 2,
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
-        titleTextStyle: const TextStyle(
+        titleTextStyle: TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.bold,
           color: Colors.white,
           letterSpacing: 0.5,
         ),
-        iconTheme: const IconThemeData(color: Colors.white, size: 24),
+        iconTheme: IconThemeData(color: Colors.white, size: 24),
         centerTitle: true,
       ),
       
       // Card Theme
       cardTheme: CardThemeData(
-        elevation: 4,
-        shadowColor: primaryColor.withValues(alpha: 0.15),
+        elevation: 6,
+        shadowColor: Colors.black.withValues(alpha: 0.5),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-        color: cardLight,
+        color: cardDark,
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
       
@@ -241,196 +240,6 @@ class AppTheme {
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFFF5F7FA),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: primaryColor, width: 2.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: errorColor, width: 2),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: errorColor, width: 2.5),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        labelStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: textSecondaryLight,
-        ),
-        floatingLabelStyle: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: primaryColor,
-        ),
-      ),
-      
-      // Bottom Navigation Bar Theme
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        elevation: 12,
-        backgroundColor: surfaceLight,
-        selectedItemColor: primaryColor,
-        unselectedItemColor: textSecondaryLight,
-        type: BottomNavigationBarType.fixed,
-        selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.w500,
-          fontSize: 12,
-        ),
-        selectedIconTheme: const IconThemeData(size: 28),
-        unselectedIconTheme: const IconThemeData(size: 24),
-      ),
-      
-      // Chip Theme
-      chipTheme: ChipThemeData(
-        backgroundColor: const Color(0xFFE0F7FF),
-        selectedColor: primaryColor.withValues(alpha: 0.2),
-        labelStyle: const TextStyle(
-          color: textPrimaryLight,
-          fontWeight: FontWeight.w600,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      ),
-      
-      // Typography
-      textTheme: const TextTheme(
-        displayLarge: TextStyle(
-          fontSize: 36,
-          fontWeight: FontWeight.w900,
-          color: textPrimaryLight,
-          height: 1.2,
-          letterSpacing: -0.5,
-        ),
-        displayMedium: TextStyle(
-          fontSize: 30,
-          fontWeight: FontWeight.w800,
-          color: textPrimaryLight,
-          height: 1.3,
-          letterSpacing: -0.3,
-        ),
-        displaySmall: TextStyle(
-          fontSize: 26,
-          fontWeight: FontWeight.w700,
-          color: textPrimaryLight,
-          height: 1.3,
-          letterSpacing: 0,
-        ),
-        headlineLarge: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w700,
-          color: textPrimaryLight,
-          height: 1.4,
-          letterSpacing: 0.2,
-        ),
-        headlineMedium: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-          color: textPrimaryLight,
-          height: 1.4,
-          letterSpacing: 0.2,
-        ),
-        headlineSmall: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: textPrimaryLight,
-          height: 1.4,
-          letterSpacing: 0.15,
-        ),
-        titleLarge: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: textPrimaryLight,
-          height: 1.5,
-          letterSpacing: 0.15,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: textPrimaryLight,
-          height: 1.5,
-          letterSpacing: 0.1,
-        ),
-        titleSmall: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: textPrimaryLight,
-          height: 1.5,
-          letterSpacing: 0.1,
-        ),
-        bodyLarge: TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.w400,
-          color: textPrimaryLight,
-          height: 1.6,
-          letterSpacing: 0.5,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w400,
-          color: textPrimaryLight,
-          height: 1.6,
-          letterSpacing: 0.25,
-        ),
-        bodySmall: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w400,
-          color: textSecondaryLight,
-          height: 1.6,
-          letterSpacing: 0.4,
-        ),
-      ),
-    );
-  }
-
-  // Dark Theme
-  static ThemeData get darkTheme {
-    return lightTheme.copyWith(
-      brightness: Brightness.dark,
-      colorScheme: const ColorScheme.dark(
-        primary: primaryColor,
-        primaryContainer: Color(0xFF004D66),
-        secondary: secondaryColor,
-        secondaryContainer: Color(0xFF993300),
-        tertiary: accentColor,
-        tertiaryContainer: Color(0xFFCC9900),
-        error: errorColor,
-        errorContainer: Color(0xFF990000),
-        surface: surfaceDark,
-        surfaceContainerHighest: Color(0xFF1A2F45),
-        onPrimary: Colors.white,
-        onSecondary: Colors.white,
-        onTertiary: Color(0xFF1A1A1A),
-        onError: Colors.white,
-        onSurface: textPrimaryDark,
-        onSurfaceVariant: textSecondaryDark,
-      ),
-      scaffoldBackgroundColor: backgroundDark,
-      cardTheme: CardThemeData(
-        elevation: 6,
-        shadowColor: Colors.black.withValues(alpha: 0.5),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        color: cardDark,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
         fillColor: const Color(0xFF1A2F45),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -448,19 +257,148 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: errorColor, width: 2),
         ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: errorColor, width: 2.5),
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        labelStyle: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: textSecondary,
+        ),
+        floatingLabelStyle: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: primaryColor,
+        ),
       ),
+      
+      // Bottom Navigation Bar Theme
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         elevation: 12,
         backgroundColor: surfaceDark,
         selectedItemColor: primaryColor,
-        unselectedItemColor: textSecondaryDark,
+        unselectedItemColor: textSecondary,
         type: BottomNavigationBarType.fixed,
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+        selectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 12,
+        ),
+        selectedIconTheme: IconThemeData(size: 28),
+        unselectedIconTheme: IconThemeData(size: 24),
+      ),
+      
+      // Chip Theme
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFF1A2F45),
+        selectedColor: primaryColor.withValues(alpha: 0.3),
+        labelStyle: const TextStyle(
+          color: textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      ),
+      
+      // Typography
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(
+          fontSize: 36,
+          fontWeight: FontWeight.w900,
+          color: textPrimary,
+          height: 1.2,
+          letterSpacing: -0.5,
+        ),
+        displayMedium: TextStyle(
+          fontSize: 30,
+          fontWeight: FontWeight.w800,
+          color: textPrimary,
+          height: 1.3,
+          letterSpacing: -0.3,
+        ),
+        displaySmall: TextStyle(
+          fontSize: 26,
+          fontWeight: FontWeight.w700,
+          color: textPrimary,
+          height: 1.3,
+          letterSpacing: 0,
+        ),
+        headlineLarge: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          color: textPrimary,
+          height: 1.4,
+          letterSpacing: 0.2,
+        ),
+        headlineMedium: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          color: textPrimary,
+          height: 1.4,
+          letterSpacing: 0.2,
+        ),
+        headlineSmall: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: textPrimary,
+          height: 1.4,
+          letterSpacing: 0.15,
+        ),
+        titleLarge: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: textPrimary,
+          height: 1.5,
+          letterSpacing: 0.15,
+        ),
+        titleMedium: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: textPrimary,
+          height: 1.5,
+          letterSpacing: 0.1,
+        ),
+        titleSmall: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: textPrimary,
+          height: 1.5,
+          letterSpacing: 0.1,
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w400,
+          color: textPrimary,
+          height: 1.6,
+          letterSpacing: 0.5,
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w400,
+          color: textPrimary,
+          height: 1.6,
+          letterSpacing: 0.25,
+        ),
+        bodySmall: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w400,
+          color: textSecondary,
+          height: 1.6,
+          letterSpacing: 0.4,
+        ),
       ),
     );
   }
+
+  // Dark Theme (same as light theme for unified appearance)
+  static ThemeData get darkTheme => lightTheme;
   
   // Animation Durations
   static const Duration fastAnimation = Duration(milliseconds: 200);

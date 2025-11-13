@@ -440,24 +440,7 @@ class _ManagerProfileState extends State<ManagerProfile> {
                       },
                     ),
                   ),
-                  ModernCard(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: _buildProfileOption(
-                      context,
-                      icon: Icons.calendar_today_rounded,
-                      title: 'Bookings',
-                      subtitle: 'View venue bookings',
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF8B5CF6), Color(0xFFA855F7)],
-                      ),
-                      onTap: () {
-                        // Navigate to bookings
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Bookings feature coming soon')),
-                        );
-                      },
-                    ),
-                  ),
+
                   ModernCard(
                     margin: const EdgeInsets.only(bottom: 12),
                     child: _buildProfileOption(

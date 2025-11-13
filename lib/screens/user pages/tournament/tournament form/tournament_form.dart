@@ -110,10 +110,11 @@ class _TournamentFormState extends State<TournamentForm> {
 
   // Date picker
   Future<void> _pickDate({required BuildContext context, required bool isStart}) async {
+    final DateTime tomorrow = DateTime.now().add(const Duration(days: 1));
     final DateTime? selectedDate = await showDatePicker(
       context: context,
-      initialDate: isStart ? pickedStartDate ?? DateTime.now() : pickedEndDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
+      initialDate: isStart ? (pickedStartDate ?? tomorrow) : (pickedEndDate ?? tomorrow),
+      firstDate: tomorrow,
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (selectedDate != null) {
@@ -477,23 +478,45 @@ class _TournamentFormState extends State<TournamentForm> {
   }
 
   // === UI helpers ===
-  OutlineInputBorder _borderStyle({Color color = const Color(0xFF1A659E)}) {
-    return OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: color, width: 2));
-  }
-
-  Widget _buildLabel(String text) => Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold));
+  Widget _buildLabel(String text) => Text(
+    text, 
+    style: const TextStyle(
+      fontSize: 16, 
+      fontWeight: FontWeight.w600,
+      color: Color(0xFF00D9FF),
+    ),
+  );
 
   Widget _buildTextField({required TextEditingController controller, required String hintText, String? Function(String?)? validator}) {
     return TextFormField(
       controller: controller,
-      style: const TextStyle(color: Colors.black),
+      style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hintText,
+        labelText: hintText,
         filled: true,
-        fillColor: Colors.white,
-        enabledBorder: _borderStyle(),
-        focusedBorder: _borderStyle(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        fillColor: const Color(0xFF0A1929),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF00D9FF), width: 2.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFFF3B30), width: 2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFFF3B30), width: 2.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       ),
       validator: validator,
     );
@@ -504,14 +527,34 @@ class _TournamentFormState extends State<TournamentForm> {
       controller: controller,
       readOnly: true,
       onTap: onTap,
+      style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: "Select Date",
-        suffixIcon: const Icon(Icons.calendar_month, color: Color(0xFF757575)),
+        labelText: "Select Date",
+        suffixIcon: const Icon(Icons.calendar_month, color: Color(0xFF00D9FF)),
         filled: true,
-        fillColor: Colors.white,
-        enabledBorder: _borderStyle(),
-        focusedBorder: _borderStyle(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        fillColor: const Color(0xFF0A1929),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF00D9FF), width: 2.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFFF3B30), width: 2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFFF3B30), width: 2.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       ),
       validator: (value) => value!.isEmpty ? "Please select date" : null,
     );
@@ -605,7 +648,7 @@ class _TournamentFormState extends State<TournamentForm> {
                 title: Text(
                   slot,
                   style: TextStyle(
-                    color: isDisabled ? Colors.grey : Colors.black,
+                    color: isDisabled ? Colors.grey : const Color.fromARGB(255, 255, 255, 255),
                     fontSize: 13,
                   ),
                 ),
@@ -708,32 +751,33 @@ class _TournamentFormState extends State<TournamentForm> {
                             ElevatedButton(
                               onPressed: details.onStepContinue,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF1A659E),
+                                backgroundColor: const Color(0xFF00D9FF),
                                 foregroundColor: Colors.white,
                                 padding: EdgeInsets.symmetric(
                                   horizontal: screenWidth > 600 ? 32 : 24, 
-                                  vertical: 12
+                                  vertical: 14
                                 ),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                elevation: 4,
                               ),
                               child: Text(
                                 currentStep == 4 ? "Create Tournament" : "Next",
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                               ),
                             ),
                             if (currentStep > 0)
                               OutlinedButton(
                                 onPressed: details.onStepCancel,
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF1A659E),
-                                  side: const BorderSide(color: Color(0xFF1A659E)),
+                                  foregroundColor: const Color(0xFF00D9FF),
+                                  side: const BorderSide(color: Color(0xFF00D9FF), width: 2),
                                   padding: EdgeInsets.symmetric(
                                     horizontal: screenWidth > 600 ? 32 : 24, 
-                                    vertical: 12
+                                    vertical: 14
                                   ),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 ),
-                                child: const Text("Back", style: TextStyle(fontWeight: FontWeight.bold)),
+                                child: const Text("Back", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                               ),
                           ],
                         ),
@@ -759,11 +803,24 @@ class _TournamentFormState extends State<TournamentForm> {
                               const SizedBox(height: 4),
                               DropdownButtonFormField<String>(
                                 value: selectedSport,
+                                style: const TextStyle(color: Colors.white),
+                                dropdownColor: const Color(0xFF132F4C),
                                 decoration: InputDecoration(
                                   filled: true, 
-                                  fillColor: Colors.white, 
-                                  enabledBorder: _borderStyle(),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  fillColor: const Color(0xFF0A1929),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Color(0xFF00D9FF), width: 2.5),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                                 ),
                                 hint: const Text("Select a sport"),
                                 items: sports.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
@@ -777,11 +834,24 @@ class _TournamentFormState extends State<TournamentForm> {
                               const SizedBox(height: 4),
                               DropdownButtonFormField<String>(
                                 value: selectedTeam,
+                                style: const TextStyle(color: Colors.white),
+                                dropdownColor: const Color(0xFF132F4C),
                                 decoration: InputDecoration(
                                   filled: true, 
-                                  fillColor: Colors.white, 
-                                  enabledBorder: _borderStyle(),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  fillColor: const Color(0xFF0A1929),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Color(0xFF00D9FF), width: 2.5),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                                 ),
                                 hint: const Text("Select teams count"),
                                 items: teams.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
@@ -792,11 +862,24 @@ class _TournamentFormState extends State<TournamentForm> {
                               const SizedBox(height: 4),
                               DropdownButtonFormField<String>(
                                 value: selectedFormat,
+                                style: const TextStyle(color: Colors.white),
+                                dropdownColor: const Color(0xFF132F4C),
                                 decoration: InputDecoration(
                                   filled: true, 
-                                  fillColor: Colors.white, 
-                                  enabledBorder: _borderStyle(),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  fillColor: const Color(0xFF0A1929),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Color(0xFF00D9FF), width: 2.5),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                                 ),
                                 hint: const Text("Select format"),
                                 items: format.map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
@@ -825,13 +908,25 @@ class _TournamentFormState extends State<TournamentForm> {
                               padding: const EdgeInsets.only(bottom: 12),
                               child: TextField(
                                 controller: e.value,
-                                style: const TextStyle(color: Colors.black),
+                                style: const TextStyle(color: Colors.white),
                                 decoration: InputDecoration(
-                                  labelText: "Team $idx", 
+                                  labelText: "Team $idx",
+                                  hintText: "Enter team $idx name",
                                   filled: true, 
-                                  fillColor: Colors.white, 
-                                  enabledBorder: _borderStyle(),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  fillColor: const Color(0xFF0A1929),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Color(0xFF00D9FF), width: 2.5),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                                 ),
                               ),
                             );
@@ -863,7 +958,7 @@ class _TournamentFormState extends State<TournamentForm> {
                                       value: "JazzCash",
                                       groupValue: selectedPayment,
                                       onChanged: (v) => setState(() => selectedPayment = v),
-                                      activeColor: const Color(0xFF1A659E),
+                                      activeColor: const Color(0xFF00D9FF),
                                     ),
                                     title: const Text("JazzCash", style: TextStyle(fontSize: 14)),
                                     subtitle: const Text("Mobile wallet payment", style: TextStyle(fontSize: 12)),
@@ -876,7 +971,7 @@ class _TournamentFormState extends State<TournamentForm> {
                                       value: "EasyPaisa",
                                       groupValue: selectedPayment,
                                       onChanged: (v) => setState(() => selectedPayment = v),
-                                      activeColor: const Color(0xFF1A659E),
+                                      activeColor: const Color(0xFF00D9FF),
                                     ),
                                     title: const Text("EasyPaisa", style: TextStyle(fontSize: 14)),
                                     subtitle: const Text("Mobile wallet payment", style: TextStyle(fontSize: 12)),
