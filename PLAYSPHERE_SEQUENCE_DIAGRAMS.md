@@ -17,6 +17,10 @@ This document contains sequence diagrams for all main features of the PlaySphere
 10. [Profile Management](#10-profile-management)
 11. [Password Reset](#11-password-reset)
 12. [Booking History](#12-booking-history)
+13. [Manager Booking Management](#13-manager-booking-management)
+14. [Manager Revenue Tracking](#14-manager-revenue-tracking)
+15. [Manager Venue Availability Management](#15-manager-venue-availability-management)
+16. [Manager Tournament Oversight](#17-manager-tournament-oversight)
 
 ---
 
@@ -811,7 +815,230 @@ sequenceDiagram
 
 ---
 
-## 13. Venue Management (Manager - Future Feature)
+## 13. Manager Booking Management
+
+```mermaid
+sequenceDiagram
+    actor Manager
+    participant Dashboard as Manager Dashboard
+    participant BookingList as Booking Management
+    participant BookingDetail as Booking Details
+    participant GlobalData as GlobalData
+    participant NotificationService as Notification Service
+
+    Manager->>Dashboard: Login as Manager
+    Dashboard->>BookingList: Navigate to Manage Bookings
+    BookingList->>GlobalData: getManagerBookings(managerId)
+    GlobalData-->>BookingList: Manager's Venue Bookings
+    
+    alt No Bookings
+        BookingList->>Manager: Show Empty State
+    else Has Bookings
+        BookingList->>Manager: Display Booking List
+        
+        Manager->>BookingList: Select Booking
+        BookingList->>BookingDetail: Open Booking Details
+        BookingDetail->>GlobalData: getBookingDetails(bookingId)
+        GlobalData-->>BookingDetail: Full Booking Info
+        BookingDetail->>Manager: Display Player Info, Venue, Date, Time, Payment
+        
+        alt Approve Booking
+            Manager->>BookingDetail: Click Approve
+            BookingDetail->>GlobalData: updateBookingStatus(bookingId, "approved")
+            GlobalData-->>BookingDetail: Status Updated
+            BookingDetail->>NotificationService: notifyPlayer(playerId, "approved")
+            NotificationService-->>BookingDetail: Notification Sent
+            BookingDetail->>Manager: Show Success Message
+            
+        else Reject Booking
+            Manager->>BookingDetail: Click Reject
+            BookingDetail->>Manager: Show Reason Dialog
+            Manager->>BookingDetail: Enter Rejection Reason
+            BookingDetail->>GlobalData: updateBookingStatus(bookingId, "rejected", reason)
+            GlobalData-->>BookingDetail: Status Updated
+            BookingDetail->>NotificationService: notifyPlayer(playerId, "rejected", reason)
+            NotificationService-->>BookingDetail: Notification Sent
+            BookingDetail->>Manager: Show Success Message
+            
+        else Cancel Booking
+            Manager->>BookingDetail: Click Cancel
+            BookingDetail->>Manager: Show Confirmation Dialog
+            Manager->>BookingDetail: Confirm Cancellation
+            BookingDetail->>GlobalData: cancelBooking(bookingId)
+            GlobalData->>GlobalData: Free up time slot
+            GlobalData->>GlobalData: Process refund if applicable
+            GlobalData-->>BookingDetail: Booking Cancelled
+            BookingDetail->>NotificationService: notifyPlayer(playerId, "cancelled")
+            NotificationService-->>BookingDetail: Notification Sent
+            BookingDetail->>Manager: Show Success Message
+        end
+        
+        BookingDetail->>BookingList: Refresh Booking List
+        BookingList->>Manager: Display Updated List
+    end
+```
+
+---
+
+## 14. Manager Revenue Tracking
+
+```mermaid
+sequenceDiagram
+    actor Manager
+    participant RevenueUI as Revenue Screen
+    participant Analytics as Analytics Service
+    participant GlobalData as GlobalData
+    participant ReportGen as Report Generator
+    participant PaymentService as Payment Service
+
+    Manager->>RevenueUI: Open Revenue Tracking
+    RevenueUI->>Analytics: getRevenueData(managerId)
+    Analytics->>GlobalData: getManagerBookings(managerId)
+    GlobalData-->>Analytics: All Manager Bookings
+    
+    Analytics->>Analytics: Filter Completed Bookings
+    Analytics->>Analytics: Calculate Total Revenue
+    Analytics->>Analytics: Calculate Monthly Revenue
+    Analytics->>Analytics: Calculate Revenue by Venue
+    Analytics->>Analytics: Calculate Revenue by Sport
+    Analytics-->>RevenueUI: Revenue Analytics
+    
+    RevenueUI->>Manager: Display Revenue Dashboard
+    RevenueUI->>Manager: Show Total Earnings
+    RevenueUI->>Manager: Show Monthly Breakdown
+    RevenueUI->>Manager: Show Venue Performance
+    
+    alt View Detailed Report
+        Manager->>RevenueUI: Select Time Period
+        RevenueUI->>Analytics: getDetailedRevenue(period)
+        Analytics->>GlobalData: getBookingsByPeriod(managerId, period)
+        GlobalData-->>Analytics: Period Bookings
+        
+        Analytics->>Analytics: Calculate Period Statistics
+        Analytics->>Analytics: Calculate Growth Rate
+        Analytics->>Analytics: Calculate Average Booking Value
+        Analytics-->>RevenueUI: Detailed Analytics
+        
+        RevenueUI->>Manager: Display Detailed Report
+        
+    else Generate Report
+        Manager->>RevenueUI: Click Generate Report
+        RevenueUI->>ReportGen: createRevenueReport(data, format)
+        ReportGen->>ReportGen: Format Data (PDF/Excel)
+        ReportGen->>ReportGen: Add Charts and Graphs
+        ReportGen-->>RevenueUI: Report File
+        RevenueUI->>Manager: Download Report
+        
+    else View Payment Details
+        Manager->>RevenueUI: Click Payment Details
+        RevenueUI->>PaymentService: getPaymentHistory(managerId)
+        PaymentService->>GlobalData: getPaymentTransactions(managerId)
+        GlobalData-->>PaymentService: Payment History
+        PaymentService-->>RevenueUI: Payment Details
+        RevenueUI->>Manager: Display Payment Breakdown
+        RevenueUI->>Manager: Show Payment Methods Used
+        RevenueUI->>Manager: Show Transaction Fees
+    end
+```
+
+---
+
+## 15. Manager Venue Availability Management
+
+```mermaid
+sequenceDiagram
+    actor Manager
+    participant AvailabilityUI as Availability Management
+    participant CalendarUI as Calendar View
+    participant SlotManager as Slot Manager
+    participant GlobalData as GlobalData
+    participant NotificationService as Notification Service
+
+    Manager->>AvailabilityUI: Open Availability Management
+    AvailabilityUI->>GlobalData: getManagerVenues(managerId)
+    GlobalData-->>AvailabilityUI: Manager's Venues
+    AvailabilityUI->>Manager: Display Venue Selection
+    
+    Manager->>AvailabilityUI: Select Venue
+    AvailabilityUI->>CalendarUI: Open Calendar View
+    CalendarUI->>SlotManager: getVenueSchedule(venueId, month)
+    SlotManager->>GlobalData: getBookedSlots(venueId, month)
+    SlotManager->>GlobalData: getBlockedSlots(venueId, month)
+    GlobalData-->>SlotManager: Schedule Data
+    SlotManager-->>CalendarUI: Calendar Data
+    
+    CalendarUI->>Manager: Display Monthly Calendar
+    CalendarUI->>Manager: Show Booked Slots (Green)
+    CalendarUI->>Manager: Show Blocked Slots (Red)
+    CalendarUI->>Manager: Show Available Slots (White)
+    
+    alt Block Time Slot
+        Manager->>CalendarUI: Select Date & Time
+        CalendarUI->>CalendarUI: Show Block Dialog
+        Manager->>CalendarUI: Enter Block Reason
+        Manager->>CalendarUI: Set Block Duration
+        Manager->>CalendarUI: Click Block Slot
+        
+        CalendarUI->>SlotManager: blockSlot(venueId, date, time, reason)
+        SlotManager->>GlobalData: addBlockedSlot(details)
+        
+        SlotManager->>GlobalData: checkExistingBookings(venueId, date, time)
+        alt Has Existing Bookings
+            GlobalData-->>SlotManager: Conflicting Bookings
+            SlotManager-->>CalendarUI: Show Conflict Warning
+            CalendarUI->>Manager: Display Affected Bookings
+            Manager->>CalendarUI: Choose Action (Cancel/Reschedule)
+            
+            alt Cancel Bookings
+                CalendarUI->>SlotManager: cancelConflictingBookings()
+                SlotManager->>GlobalData: cancelBookings(bookingIds)
+                SlotManager->>NotificationService: notifyAffectedPlayers()
+                NotificationService-->>SlotManager: Notifications Sent
+            else Reschedule Bookings
+                CalendarUI->>Manager: Show Reschedule Options
+                Manager->>CalendarUI: Select New Slots
+                CalendarUI->>SlotManager: rescheduleBookings(newSlots)
+                SlotManager->>GlobalData: updateBookings(bookingIds, newSlots)
+                SlotManager->>NotificationService: notifyPlayersOfReschedule()
+                NotificationService-->>SlotManager: Notifications Sent
+            end
+        else No Conflicts
+            GlobalData-->>SlotManager: No Conflicts
+        end
+        
+        SlotManager-->>CalendarUI: Slot Blocked
+        CalendarUI->>CalendarUI: Update Calendar Display
+        CalendarUI->>Manager: Show Success Message
+        
+    else Unblock Time Slot
+        Manager->>CalendarUI: Click Blocked Slot
+        CalendarUI->>CalendarUI: Show Unblock Dialog
+        Manager->>CalendarUI: Confirm Unblock
+        CalendarUI->>SlotManager: unblockSlot(venueId, date, time)
+        SlotManager->>GlobalData: removeBlockedSlot(slotId)
+        GlobalData-->>SlotManager: Slot Unblocked
+        SlotManager-->>CalendarUI: Success
+        CalendarUI->>CalendarUI: Update Calendar Display
+        CalendarUI->>Manager: Show Success Message
+        
+    else Set Operating Hours
+        Manager->>AvailabilityUI: Click Set Hours
+        AvailabilityUI->>AvailabilityUI: Show Hours Dialog
+        Manager->>AvailabilityUI: Set Opening Time
+        Manager->>AvailabilityUI: Set Closing Time
+        Manager->>AvailabilityUI: Select Operating Days
+        Manager->>AvailabilityUI: Click Save Hours
+        
+        AvailabilityUI->>GlobalData: updateVenueHours(venueId, hours)
+        GlobalData-->>AvailabilityUI: Hours Updated
+        AvailabilityUI->>Manager: Show Success Message
+        AvailabilityUI->>CalendarUI: Refresh Calendar
+    end
+```
+
+---
+
+## 16. Venue Management (Manager - Future Feature)
 
 ```mermaid
 sequenceDiagram
@@ -879,7 +1106,82 @@ sequenceDiagram
 
 ---
 
-## 14. Real-time Slot Availability Check
+## 17. Manager Tournament Oversight
+
+```mermaid
+sequenceDiagram
+    actor Manager
+    participant TournamentUI as Tournament Management
+    participant TournamentDetail as Tournament Details
+    participant GlobalData as GlobalData
+    participant VenueService as Venue Service
+    participant NotificationService as Notification Service
+
+    Manager->>TournamentUI: Open Tournament Management
+    TournamentUI->>GlobalData: getTournamentsUsingManagerVenues(managerId)
+    GlobalData-->>TournamentUI: Relevant Tournaments
+    
+    alt No Tournaments
+        TournamentUI->>Manager: Show Empty State
+    else Has Tournaments
+        TournamentUI->>Manager: Display Tournament List
+        
+        Manager->>TournamentUI: Select Tournament
+        TournamentUI->>TournamentDetail: Open Tournament Details
+        TournamentDetail->>GlobalData: getTournamentDetails(tournamentId)
+        GlobalData-->>TournamentDetail: Tournament Data
+        TournamentDetail->>Manager: Display Tournament Info
+        TournamentDetail->>Manager: Show Venue Usage Schedule
+        TournamentDetail->>Manager: Show Match Fixtures
+        
+        alt Approve Tournament Venue Usage
+            Manager->>TournamentDetail: Click Approve Tournament
+            TournamentDetail->>GlobalData: approveTournamentVenues(tournamentId, managerId)
+            GlobalData->>GlobalData: Confirm venue bookings
+            GlobalData->>GlobalData: Block tournament slots
+            GlobalData-->>TournamentDetail: Tournament Approved
+            TournamentDetail->>NotificationService: notifyTournamentOrganizer(approved)
+            NotificationService-->>TournamentDetail: Notification Sent
+            TournamentDetail->>Manager: Show Success Message
+            
+        else Reject Tournament Venue Usage
+            Manager->>TournamentDetail: Click Reject Tournament
+            TournamentDetail->>Manager: Show Rejection Dialog
+            Manager->>TournamentDetail: Enter Rejection Reason
+            TournamentDetail->>GlobalData: rejectTournamentVenues(tournamentId, reason)
+            GlobalData->>GlobalData: Free up reserved slots
+            GlobalData-->>TournamentDetail: Tournament Rejected
+            TournamentDetail->>NotificationService: notifyTournamentOrganizer(rejected, reason)
+            NotificationService-->>TournamentDetail: Notification Sent
+            TournamentDetail->>Manager: Show Success Message
+            
+        else Modify Tournament Schedule
+            Manager->>TournamentDetail: Click Modify Schedule
+            TournamentDetail->>Manager: Show Available Alternatives
+            Manager->>TournamentDetail: Select New Time Slots
+            TournamentDetail->>VenueService: checkAlternativeSlots(newSlots)
+            VenueService->>GlobalData: validateSlotAvailability(newSlots)
+            
+            alt Slots Available
+                GlobalData-->>VenueService: Slots Available
+                VenueService-->>TournamentDetail: Modification Possible
+                TournamentDetail->>GlobalData: updateTournamentSchedule(tournamentId, newSlots)
+                GlobalData-->>TournamentDetail: Schedule Updated
+                TournamentDetail->>NotificationService: notifyTournamentOrganizer(modified)
+                NotificationService-->>TournamentDetail: Notification Sent
+                TournamentDetail->>Manager: Show Success Message
+            else Slots Unavailable
+                GlobalData-->>VenueService: Slots Conflict
+                VenueService-->>TournamentDetail: Modification Not Possible
+                TournamentDetail->>Manager: Show Conflict Error
+            end
+        end
+    end
+```
+
+---
+
+## 18. Real-time Slot Availability Check
 
 ```mermaid
 sequenceDiagram

@@ -74,15 +74,16 @@ sequenceDiagram
     GlobalData-->>UI: Updated
     UI->>User: Show Updated Standings
     
-    Note over User,GlobalData: 5. MANAGER ANALYTICS
+    Note over User,GlobalData: 5. MANAGER OPERATIONS
+    User->>UI: Add Venue & Set Pricing
+    UI->>GlobalData: Save Venue
+    User->>UI: View All Bookings
+    UI->>GlobalData: Get Bookings
+    User->>UI: Manage Users
+    UI->>Auth: Block/Unblock User
     User->>UI: View Analytics
-    User->>UI: Select Period
-    UI->>AnalyticsService: fetchAnalytics(period)
-    AnalyticsService->>GlobalData: Get Bookings Data
-    GlobalData-->>AnalyticsService: Bookings
-    AnalyticsService->>AnalyticsService: Calculate Stats & Charts
-    AnalyticsService-->>UI: Analytics Data
-    UI->>User: Display Charts & Metrics
+    UI->>AnalyticsService: Get Revenue Data
+    AnalyticsService-->>UI: Charts & Metrics
 ```
 
 ---
@@ -113,11 +114,11 @@ sequenceDiagram
 - Automatic points calculation
 - Real-time standings update
 
-### 5. Manager Analytics
-- View booking statistics
-- Revenue tracking
-- Time period filtering (Weekly/Monthly/Yearly)
-- Visual charts and metrics
+### 5. Manager Operations
+- Add venues and set pricing
+- View and manage all bookings
+- User management (block/unblock)
+- Analytics dashboard with revenue tracking
 
 ---
 
