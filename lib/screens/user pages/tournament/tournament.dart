@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../user home/favourite/global_data.dart';
 import '../../../main.dart';
+import '../../../services/tournament_service.dart';
 
 class Tournament extends StatefulWidget {
   const Tournament({super.key});
@@ -11,6 +14,42 @@ class Tournament extends StatefulWidget {
 
 class _TournamentState extends State<Tournament> {
   List<Map<String, dynamic>> tournaments = [];
+  StreamSubscription? _sub;
+  final String? _uid = FirebaseAuth.instance.currentUser?.uid;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_uid != null) {
+      _sub = TournamentService.getUserTournaments(_uid).listen((list) {
+        if (mounted) {
+          setState(() {
+            tournaments = list;
+            GlobalData.tournaments = list;
+            for (final t in list) {
+              // Firestore document ID use karo (id field)
+              final id = t['id'] as String? ?? '';
+              final teamNames = (t['teamNames'] as List?)?.cast<String>() ?? [];
+              final matches = (t['matches'] as List?)
+                      ?.map((m) => Map<String, dynamic>.from(m as Map))
+                      .toList() ??
+                  [];
+              if (id.isNotEmpty) {
+                // Hamesha update karo taake fresh data rahe
+                GlobalData.initializeTournament(id, teamNames, matches);
+              }
+            }
+          });
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -141,11 +180,11 @@ class _TournamentState extends State<Tournament> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      gradient: _getSportGradient(tournament['sport']),
+                      gradient: _getSportGradient(tournament['sport'] ?? ''),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      _getSportIcon(tournament['sport']),
+                      _getSportIcon(tournament['sport'] ?? ''),
                       color: Colors.white,
                       size: 24,
                     ),
@@ -156,7 +195,7 @@ class _TournamentState extends State<Tournament> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          tournament['name'],
+                          tournament['name'] ?? 'Tournament',
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: colorScheme.onSurface,
@@ -164,13 +203,18 @@ class _TournamentState extends State<Tournament> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          "${tournament['sport']} • ${tournament['format']}",
+                          "${tournament['sport'] ?? ''} • ${tournament['format'] ?? ''}",
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
                     ),
+                  ),
+                  // Delete button
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                    onPressed: () => _confirmDelete(tournament),
                   ),
                   Icon(
                     Icons.arrow_forward_ios_rounded,
@@ -184,8 +228,8 @@ class _TournamentState extends State<Tournament> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _buildInfoChip(Icons.groups_rounded, "${tournament['teams']} Teams", colorScheme),
-                  _buildInfoChip(Icons.calendar_today_rounded, "${tournament['startDate']} - ${tournament['endDate']}", colorScheme),
+                  _buildInfoChip(Icons.groups_rounded, "${tournament['teams'] ?? 0} Teams", colorScheme),
+                  _buildInfoChip(Icons.calendar_today_rounded, "${tournament['startDate'] ?? ''} - ${tournament['endDate'] ?? ''}", colorScheme),
                   _buildInfoChip(Icons.sports_rounded, "${tournament['bookedGrounds']?.length ?? 0} Grounds", colorScheme),
                   _buildInfoChip(Icons.schedule_rounded, "${tournament['matches']?.length ?? tournament['fixtures']?.length ?? 0} Matches", colorScheme),
                 ],
@@ -272,6 +316,69 @@ class _TournamentState extends State<Tournament> {
       ),
     );
   }
+
+  Future<void> _confirmDelete(Map<String, dynamic> tournament) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.delete_outline_rounded, color: Colors.red),
+          SizedBox(width: 10),
+          Text('Delete Tournament'),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Delete "${tournament['name'] ?? 'Tournament'}"?'),
+            const SizedBox(height: 8),
+            const Text(
+              'All ground bookings for this tournament will be cancelled.',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    final id = tournament['id'] as String? ?? '';
+    if (id.isEmpty) return;
+    try {
+      await TournamentService.deleteTournament(id, _uid ?? '');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Tournament deleted and bookings cancelled'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Failed to delete tournament'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
+  }
 }
 
 // Tournament Details Page with tabs
@@ -314,7 +421,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
           ),
           child: AppBar(
             title: Text(
-              widget.tournament['name'],
+              widget.tournament['name'] ?? 'Tournament',
               style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
             ),
             backgroundColor: Colors.transparent,
@@ -385,7 +492,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              _getSportIcon(widget.tournament['sport']),
+              _getSportIcon(widget.tournament['sport'] ?? ''),
               color: Colors.white,
               size: 32,
             ),
@@ -396,7 +503,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.tournament['name'],
+                  widget.tournament['name'] ?? 'Tournament',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -404,7 +511,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                   ),
                 ),
                 Text(
-                  "${widget.tournament['sport']} Tournament",
+                  "${widget.tournament['sport'] ?? ''} Tournament",
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 14,
@@ -427,11 +534,11 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        _buildDetailRow("Format", widget.tournament['format']),
-        _buildDetailRow("Teams", "${widget.tournament['teams']}"),
-        _buildDetailRow("Start Date", widget.tournament['startDate']),
-        _buildDetailRow("End Date", widget.tournament['endDate']),
-        _buildDetailRow("Actual End", widget.tournament['actualEndDate'] ?? widget.tournament['endDate']),
+        _buildDetailRow("Format", widget.tournament['format'] ?? ''),
+        _buildDetailRow("Teams", "${widget.tournament['teams'] ?? 0}"),
+        _buildDetailRow("Start Date", widget.tournament['startDate'] ?? ''),
+        _buildDetailRow("End Date", widget.tournament['endDate'] ?? ''),
+        _buildDetailRow("Actual End", widget.tournament['actualEndDate'] ?? widget.tournament['endDate'] ?? ''),
         _buildDetailRow("Grounds Booked", "${widget.tournament['bookedGrounds']?.length ?? 0}"),
         _buildDetailRow("Total Matches", "${widget.tournament['matches']?.length ?? widget.tournament['fixtures']?.length ?? 0}"),
         _buildDetailRow("Status", widget.tournament['status'] ?? 'Active'),
@@ -468,7 +575,11 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
   }
 
   Widget _buildGroundBookings() {
-    final bookings = widget.tournament['bookedGrounds'] as List<Map<String, dynamic>>? ?? [];
+    final rawBookings = widget.tournament['bookedGrounds'];
+    final bookings = (rawBookings as List?)
+            ?.map((b) => Map<String, dynamic>.from(b as Map))
+            .toList() ??
+        [];
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -482,14 +593,20 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
           const Text("No ground bookings")
         else
           ...bookings.map((booking) {
+            // Firestore mein ground flat fields hain (groundName, groundId etc.)
+            final groundName = booking['groundName'] as String? ??
+                (booking['ground'] as Map?)?['name'] as String? ?? '';
+            final date = booking['date'] as String? ?? '';
+            final slot = booking['slot'] as String? ?? '';
+            final payment = booking['payment'] as String? ?? '';
             return Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
                 leading: const Icon(Icons.sports, color: Color(0xFF1A659E)),
-                title: Text(booking['ground']['name']),
-                subtitle: Text("${booking['date']} • ${booking['slot']}"),
+                title: Text(groundName),
+                subtitle: Text("$date • $slot"),
                 trailing: Text(
-                  booking['payment'],
+                  payment,
                   style: const TextStyle(
                     color: Color(0xFF26A69A),
                     fontWeight: FontWeight.bold,
@@ -503,8 +620,15 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
   }
 
   Widget _buildMatchesTab() {
-    String tournamentId = widget.tournament['id'];
+    final tournamentId = widget.tournament['id'] as String? ?? '';
+    // GlobalData mein nahi mila to Firestore data se lo
     List<Map<String, dynamic>> matches = GlobalData.tournamentMatches[tournamentId] ?? [];
+    if (matches.isEmpty) {
+      matches = (widget.tournament['matches'] as List?)
+              ?.map((m) => Map<String, dynamic>.from(m as Map))
+              .toList() ??
+          [];
+    }
     
     if (matches.isEmpty) {
       return const Center(
@@ -526,8 +650,14 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
   }
 
   Widget _buildMatchCard(Map<String, dynamic> match, int index) {
-    String team1 = match['team1'] ?? '';
-    String team2 = match['team2'] ?? '';
+    final tournamentId = widget.tournament['id'] as String? ?? '';
+    final allMatches = GlobalData.tournamentMatches[tournamentId] ??
+        (widget.tournament['matches'] as List?)
+            ?.map((m) => Map<String, dynamic>.from(m as Map))
+            .toList() ?? [];
+
+    String team1 = _resolveTeamName(match['team1'] ?? '', allMatches);
+    String team2 = _resolveTeamName(match['team2'] ?? '', allMatches);
     String status = match['status'] ?? 'scheduled';
     String result = match['result'] ?? '';
     String winner = match['winner'] ?? '';
@@ -677,7 +807,9 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
-                        match['ground'] ?? 'TBD',
+                        match['ground']?.toString().isNotEmpty == true
+                            ? match['ground'] as String
+                            : 'Venue TBD',
                         style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1017,18 +1149,54 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
     );
   }
 
+  /// "Winner of X vs Y" / "Loser N" ko actual team name mein resolve karo
+  String _resolveTeamName(String name, List<Map<String, dynamic>> allMatches) {
+    if (name.startsWith('Winner of ')) {
+      final vs = name.replaceFirst('Winner of ', '');
+      final parts = vs.split(' vs ');
+      if (parts.length == 2) {
+        final match = allMatches.firstWhere(
+          (m) => m['team1'] == parts[0].trim() && m['team2'] == parts[1].trim(),
+          orElse: () => {},
+        );
+        if (match.isNotEmpty && match['winner'] != null) {
+          return match['winner'] as String;
+        }
+      }
+      return name; // still pending
+    }
+    if (name.startsWith('Loser ')) {
+      final idx = int.tryParse(name.replaceFirst('Loser ', ''));
+      if (idx != null && idx <= allMatches.length) {
+        final match = allMatches[idx - 1];
+        if (match['winner'] != null && match['status'] == 'completed') {
+          final t1 = match['team1'] as String? ?? '';
+          final t2 = match['team2'] as String? ?? '';
+          final w = match['winner'] as String? ?? '';
+          return w == t1 ? t2 : t1;
+        }
+      }
+      return name;
+    }
+    return name;
+  }
+
   void _updateMatchResult(int matchIndex, String result, String? winner, int? team1Score, int? team2Score) {
-    String tournamentId = widget.tournament['id'];
+    final tournamentId = widget.tournament['id'] as String? ?? '';
     GlobalData.updateMatchResult(
-      tournamentId, 
-      matchIndex, 
-      result, 
+      tournamentId,
+      matchIndex,
+      result,
       winnerTeam: winner,
       team1Score: team1Score,
       team2Score: team2Score,
     );
-    setState(() {}); // Refresh the UI
-    
+    setState(() {});
+
+    // Firestore mein updated matches save karo
+    final updatedMatches = GlobalData.tournamentMatches[tournamentId] ?? [];
+    TournamentService.updateTournament(tournamentId, {'matches': updatedMatches});
+
     String message;
     if (result == 'abandoned') {
       message = "Match marked as abandoned. Each team gets 1 point.";
@@ -1037,7 +1205,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
     } else {
       message = "$winner wins! 3 points awarded.";
     }
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -1047,7 +1215,18 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
   }
 
   Widget _buildPointsTab() {
-    String tournamentId = widget.tournament['id'];
+    final tournamentId = widget.tournament['id'] as String? ?? '';
+    // Ensure GlobalData has latest matches
+    if (GlobalData.tournamentMatches[tournamentId] == null) {
+      final matches = (widget.tournament['matches'] as List?)
+              ?.map((m) => Map<String, dynamic>.from(m as Map))
+              .toList() ??
+          [];
+      final teamNames = (widget.tournament['teamNames'] as List?)
+              ?.cast<String>() ??
+          [];
+      GlobalData.initializeTournament(tournamentId, teamNames, matches);
+    }
     List<Map<String, dynamic>> pointsTable = GlobalData.getPointsTable(tournamentId);
     Map<String, dynamic> stats = GlobalData.getTournamentStats(tournamentId);
     final theme = Theme.of(context);
@@ -1315,8 +1494,14 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
   }
 
   Widget _buildScheduleTab() {
-    String tournamentId = widget.tournament['id'];
+    final tournamentId = widget.tournament['id'] as String? ?? '';
     List<Map<String, dynamic>> matches = GlobalData.tournamentMatches[tournamentId] ?? [];
+    if (matches.isEmpty) {
+      matches = (widget.tournament['matches'] as List?)
+              ?.map((m) => Map<String, dynamic>.from(m as Map))
+              .toList() ??
+          [];
+    }
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
@@ -1442,13 +1627,18 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                 int matchIndex = entry.key;
                 Map<String, dynamic> match = entry.value;
                 bool isCompleted = match['status'] == 'completed';
+
+                final t1 = _resolveTeamName(match['team1'] ?? '', matches);
+                final t2 = _resolveTeamName(match['team2'] ?? '', matches);
+                final groundName = (match['ground'] as String?)?.isNotEmpty == true
+                    ? match['ground'] as String
+                    : null;
                 
                 return InkWell(
                   onTap: isCompleted ? null : () {
-                    // Find the global match index
                     int globalIndex = matches.indexOf(match);
-                    if (globalIndex != -1 && match['team1'] != 'BYE' && match['team2'] != 'BYE') {
-                      _showResultDialog(globalIndex, match['team1'], match['team2']);
+                    if (globalIndex != -1 && t1 != 'BYE' && t2 != 'BYE') {
+                      _showResultDialog(globalIndex, t1, t2);
                     }
                   },
                   child: Container(
@@ -1496,7 +1686,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      "${match['team1']} vs ${match['team2']}",
+                                      "$t1 vs $t2",
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600, 
                                         fontSize: 13,
@@ -1541,7 +1731,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
-                                      match['ground'] ?? 'TBD',
+                                      groundName ?? 'Venue TBD',
                                       style: TextStyle(
                                         color: colorScheme.onSurfaceVariant, 
                                         fontSize: 11

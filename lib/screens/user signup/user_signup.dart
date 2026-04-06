@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../main.dart';
 import '../../services/auth_service.dart';
+import '../../services/user_service.dart';
 
 class UserSignup extends StatefulWidget {
   const UserSignup({super.key});
@@ -42,8 +43,16 @@ class _SignupState extends State<UserSignup> {
     );
 
     if (userCredential != null) {
-      // Update user profile with display name
+      // Update Firebase Auth profile
       await _authService.updateProfile(displayName: fullName.text.trim());
+
+      // Firestore mein user data save karo
+      await UserService.saveUser(
+        uid: userCredential.user!.uid,
+        fullName: fullName.text.trim(),
+        email: eMail.text.trim(),
+        mobile: mobileNo.text.trim(),
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

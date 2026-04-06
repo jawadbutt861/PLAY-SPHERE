@@ -1,134 +1,203 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../main.dart';
+import '../../../services/ground_service.dart';
+import 'favourite/booking_helper.dart';
 
-class AutoScrollingImageRow extends StatefulWidget {
+// ── Auto-scrolling ground cards per category ──────────────
+class TopGroundsRow extends StatefulWidget {
   final String category;
-  final List<String> imageAssets;
+  final List<Map<String, dynamic>> grounds; // sorted by booking count
 
-  const AutoScrollingImageRow({
-    super.key,
-    required this.category,
-    required this.imageAssets,
-  });
+  const TopGroundsRow({super.key, required this.category, required this.grounds});
 
   @override
-  State<AutoScrollingImageRow> createState() => _AutoScrollingImageRowState();
+  State<TopGroundsRow> createState() => _TopGroundsRowState();
 }
 
-class _AutoScrollingImageRowState extends State<AutoScrollingImageRow> {
-  final PageController _pageController = PageController();
+class _TopGroundsRowState extends State<TopGroundsRow> {
+  final PageController _ctrl = PageController();
   Timer? _timer;
-  int _currentPage = 0;
+  int _page = 0;
 
   @override
   void initState() {
     super.initState();
-    _pageController.addListener(() {
-      setState(() {
-        _currentPage = _pageController.page!.round();
+    if (widget.grounds.length > 1) {
+      _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+        if (!_ctrl.hasClients) return;
+        final next = (_page + 1) % widget.grounds.length;
+        _ctrl.animateToPage(next,
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeInOut);
       });
-    });
-    _startAutoScroll();
-  }
-
-  void _startAutoScroll() {
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (_pageController.hasClients) {
-        int nextPage = _currentPage + 1;
-        if (nextPage >= widget.imageAssets.length) {
-          nextPage = 0; // Loop back to start
-        }
-        _pageController.animateToPage(
-          nextPage,
-          duration: const Duration(seconds: 1),
-          curve: Curves.easeInOut,
-        );
-      }
+    }
+    _ctrl.addListener(() {
+      final p = _ctrl.page?.round() ?? 0;
+      if (p != _page && mounted) setState(() => _page = p);
     });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    _pageController.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    
+    final colorScheme = Theme.of(context).colorScheme;
+    if (widget.grounds.isEmpty) {
+      return Container(
+        height: 200,
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Center(
+          child: Text('No venues yet',
+              style: TextStyle(color: colorScheme.onSurfaceVariant)),
+        ),
+      );
+    }
+
     return Column(
       children: [
-        Container(
-          height: 220,
-          margin: const EdgeInsets.symmetric(horizontal: 16),
+        SizedBox(
+          height: 200,
           child: PageView.builder(
-            controller: _pageController,
-            itemCount: widget.imageAssets.length,
-            itemBuilder: (context, index) {
-              return _buildStyledImage(widget.imageAssets[index], colorScheme);
-            },
+            controller: _ctrl,
+            itemCount: widget.grounds.length,
+            itemBuilder: (_, i) => _groundCard(widget.grounds[i], colorScheme),
           ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            widget.imageAssets.length,
-            (index) => AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.symmetric(horizontal: 3.0),
-              height: 6.0,
-              width: _currentPage == index ? 20.0 : 6.0,
-              decoration: BoxDecoration(
-                color: _currentPage == index 
-                    ? AppTheme.primaryColor 
-                    : colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(3.0),
-              ),
-            ),
+        if (widget.grounds.length > 1) ...[
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(widget.grounds.length, (i) {
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                height: 6,
+                width: _page == i ? 20 : 6,
+                decoration: BoxDecoration(
+                  color: _page == i
+                      ? AppTheme.primaryColor
+                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
           ),
-        ),
+        ],
       ],
     );
   }
 
-  Widget _buildStyledImage(String asset, ColorScheme colorScheme) {
+  Widget _groundCard(Map<String, dynamic> g, ColorScheme colorScheme) {
+    final imageUrls = (g['imageUrls'] as List?)?.cast<String>() ?? [];
+    final bookingCount = g['bookingCount'] as int? ?? 0;
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8.0),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20.0),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 12.0,
-            offset: const Offset(0, 6),
-          ),
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 12,
+              offset: const Offset(0, 6)),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20.0),
+        borderRadius: BorderRadius.circular(20),
         child: Stack(
+          fit: StackFit.expand,
           children: [
-            Image.asset(
-              asset,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-            ),
+            // Image
+            imageUrls.isNotEmpty
+                ? Image.network(imageUrls.first,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                        color: colorScheme.surfaceContainerHighest,
+                        child: Icon(Icons.sports,
+                            size: 48, color: colorScheme.onSurfaceVariant)))
+                : Container(
+                    color: colorScheme.surfaceContainerHighest,
+                    child: Icon(Icons.sports,
+                        size: 48, color: colorScheme.onSurfaceVariant)),
+            // Gradient overlay
             Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.3),
-                  ],
+                  colors: [Colors.transparent, Colors.black54],
                 ),
+              ),
+            ),
+            // Ground info
+            Positioned(
+              bottom: 12,
+              left: 14,
+              right: 14,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          g['name'] ?? '',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if ((g['location'] ?? '').isNotEmpty)
+                          Row(children: [
+                            const Icon(Icons.location_on_rounded,
+                                size: 12, color: Colors.white70),
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(g['location'],
+                                  style: const TextStyle(
+                                      color: Colors.white70, fontSize: 11),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                            ),
+                          ]),
+                      ],
+                    ),
+                  ),
+                  // Booking count badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.bookmark_rounded,
+                          size: 12, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text('$bookingCount',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold)),
+                    ]),
+                  ),
+                ],
               ),
             ),
           ],
@@ -138,6 +207,7 @@ class _AutoScrollingImageRowState extends State<AutoScrollingImageRow> {
   }
 }
 
+// ── Home Screen ────────────────────────────────────────────
 class Home extends StatefulWidget {
   const Home({super.key});
 
@@ -146,80 +216,114 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  // Define categories and their image assets (5 images each)
-  final List<Map<String, dynamic>> categories = [
-    {
-      'name': 'Top Cricket Grounds',
-      'images': [
-        'assets/images/c1.jpeg',
-        'assets/images/c1.jpeg',
-        'assets/images/c1.jpeg',
-        'assets/images/c1.jpeg',
-        
-      ],
-    },
-    {
-      'name': 'Top Football Grounds',
-      'images': [
-        'assets/images/f1.jpg',
-        'assets/images/f1.jpg',
-        'assets/images/f1.jpg',
-        'assets/images/f1.jpg',
-        
-      ],
-    },
-    {
-      'name': 'Top Tennis Courts',
-      'images': [
-        'assets/images/t1.jpeg',
-        'assets/images/t1.jpeg',
-        'assets/images/t1.jpeg',
-        'assets/images/t1.jpeg',
-        
-      ],
-    },
-    {
-      'name': 'Top Basketball Courts',
-      'images': [
-        'assets/images/b1.webp',
-        'assets/images/b1.webp',
-        'assets/images/b1.webp',
-        'assets/images/b1.webp',
-        
-      ],
-    },
-    {
-      'name': 'Top Hockey Grounds',
-      'images': [
-        'assets/images/h1.webp',
-        'assets/images/h1.webp',
-        'assets/images/h1.webp',
-        'assets/images/h1.webp',
-        'assets/images/h1.webp',
-      ],
-    },
-    {
-      'name': 'Top Volleyball Courts',
-      'images': [
-        'assets/images/v1.jpg',
-        'assets/images/v1.jpg',
-        'assets/images/v1.jpg',
-        'assets/images/v1.jpg',
-        
-      ],
-    },
+  final _db = FirebaseFirestore.instance;
+  // category -> list of grounds sorted by booking count
+  Map<String, List<Map<String, dynamic>>> _topGrounds = {};
+  bool _loading = true;
+  StreamSubscription? _groundsSub;
+
+  static const _categories = [
+    'Cricket', 'Football', 'Tennis', 'Basketball', 'Hockey', 'Volleyball'
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _groundsSub = GroundService.getGroundsByCategory('ALL').listen((grounds) {
+      if (mounted) _loadTopGrounds(grounds);
+    });
+  }
+
+  @override
+  void dispose() {
+    _groundsSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadTopGrounds(List<Map<String, dynamic>> grounds) async {
+    // Count bookings per ground
+    final Map<String, int> bookingCounts = {};
+    try {
+      final snap = await _db
+          .collection('bookings')
+          .where('status', whereIn: ['confirmed', 'completed'])
+          .get();
+      for (final doc in snap.docs) {
+        final gid = doc.data()['groundId'] as String? ?? '';
+        if (gid.isNotEmpty) bookingCounts[gid] = (bookingCounts[gid] ?? 0) + 1;
+      }
+    } catch (_) {}
+
+    // Group by category, attach count, sort — sirf top 1
+    final Map<String, List<Map<String, dynamic>>> result = {};
+    for (final cat in _categories) {
+      final catGrounds = grounds
+          .where((g) => g['category'] == cat)
+          .map((g) => {
+                ...g,
+                'bookingCount': bookingCounts[g['id'] as String? ?? ''] ?? 0,
+              })
+          .toList();
+      catGrounds.sort((a, b) =>
+          (b['bookingCount'] as int).compareTo(a['bookingCount'] as int));
+      result[cat] = catGrounds.take(1).toList(); // only top 1
+    }
+
+    if (mounted) setState(() { _topGrounds = result; _loading = false; });
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-
     return Scaffold(
       backgroundColor: colorScheme.surface,
       body: CustomScrollView(
         slivers: [
+          // Greeting
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(children: [
+                const Icon(Icons.waving_hand_rounded,
+                    color: Colors.white, size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Welcome back,',
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 13)),
+                      Text(
+                        FirebaseAuth.instance.currentUser?.displayName ??
+                            FirebaseAuth.instance.currentUser?.email ??
+                            'Player',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  DateFormat('EEE, d MMM').format(DateTime.now()),
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontSize: 12),
+                ),
+              ]),
+            ),
+          ),
+
           // Hero Section
           SliverToBoxAdapter(
             child: Container(
@@ -238,7 +342,6 @@ class _HomeState extends State<Home> {
               ),
               child: Stack(
                 children: [
-                  // Background Pattern
                   Positioned.fill(
                     child: Container(
                       decoration: BoxDecoration(
@@ -251,49 +354,36 @@ class _HomeState extends State<Home> {
                       ),
                     ),
                   ),
-                  
-                  // Content
                   Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Spacer(),
-                        Text(
-                          "Book Your Perfect",
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          "Sports Venue",
-                          style: theme.textTheme.headlineLarge?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        Text("Book Your Perfect",
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
+                        Text("Sports Venue",
+                            style: theme.textTheme.headlineLarge?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
                         Text(
-                          "Find and book the best sports venues in your area",
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.9),
-                          ),
-                        ),
+                            "Find and book the best sports venues in your area",
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                                color: Colors.white.withValues(alpha: 0.9))),
                         const SizedBox(height: 24),
                         GradientButton(
                           text: "Book Venue",
                           gradient: const LinearGradient(
-                            colors: [Colors.white, Colors.white],
-                          ),
+                              colors: [Colors.white, Colors.white]),
                           textStyle: TextStyle(
-                            color: AppTheme.primaryColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/Categories');
-                          },
+                              color: AppTheme.primaryColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold),
+                          onPressed: () =>
+                              Navigator.pushNamed(context, '/Categories'),
                         ),
                       ],
                     ),
@@ -302,94 +392,195 @@ class _HomeState extends State<Home> {
               ),
             ),
           ),
+
           // Quick Actions
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: Row(
                 children: [
                   Expanded(
-                    child: _buildQuickActionCard(
-                      context,
-                      icon: Icons.favorite_rounded,
-                      title: "Favourites",
-                      subtitle: "Saved venues",
-                      gradient: AppTheme.accentGradient,
-                      onTap: () => Navigator.pushNamed(context, '/Favourite'),
-                    ),
+                    child: _quickCard(context,
+                        icon: Icons.favorite_rounded,
+                        title: "Favourites",
+                        subtitle: "Saved venues",
+                        gradient: AppTheme.accentGradient,
+                        onTap: () => Navigator.pushNamed(context, '/Favourite')),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _buildQuickActionCard(
-                      context,
-                      icon: Icons.history_rounded,
-                      title: "History",
-                      subtitle: "Past bookings",
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF8B5CF6), Color(0xFFA855F7)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      onTap: () => Navigator.pushNamed(context, '/BookingHistory'),
-                    ),
+                    child: _quickCard(context,
+                        icon: Icons.history_rounded,
+                        title: "History",
+                        subtitle: "Past bookings",
+                        gradient: const LinearGradient(colors: [
+                          Color(0xFF8B5CF6),
+                          Color(0xFFA855F7)
+                        ]),
+                        onTap: () =>
+                            Navigator.pushNamed(context, '/BookingHistory')),
                   ),
                 ],
               ),
             ),
           ),
-          // Categories Section
-          ...categories.map((category) => SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 4,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          gradient: AppTheme.primaryGradient,
-                          borderRadius: BorderRadius.circular(2),
+
+          // Top Grounds per category
+          if (_loading)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            )
+          else
+            ..._categories.map((cat) {
+              final grounds = _topGrounds[cat] ?? [];
+              if (grounds.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+              final g = grounds.first;
+              final imageUrls = (g['imageUrls'] as List?)?.cast<String>() ?? [];
+              final colorScheme = Theme.of(context).colorScheme;
+
+              return SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 14),
+                      child: Row(children: [
+                        Container(
+                          width: 4, height: 24,
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.primaryGradient,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text('Top $cat Venue',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface)),
+                      ]),
+                    ),
+                    // Single top ground card
+                    Container(
+                      height: 200,
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6)),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            imageUrls.isNotEmpty
+                                ? Image.network(imageUrls.first,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                        color: colorScheme.surfaceContainerHighest,
+                                        child: Icon(Icons.sports,
+                                            size: 48,
+                                            color: colorScheme.onSurfaceVariant)))
+                                : Container(
+                                    color: colorScheme.surfaceContainerHighest,
+                                    child: Icon(Icons.sports,
+                                        size: 48,
+                                        color: colorScheme.onSurfaceVariant)),
+                            // Gradient overlay
+                            Container(
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [Colors.transparent, Colors.black54],
+                                ),
+                              ),
+                            ),
+                            // Book Now button
+                            Positioned(
+                              bottom: 14, left: 14, right: 14,
+                              child: Row(children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(g['name'] ?? '',
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis),
+                                      if ((g['location'] ?? '').isNotEmpty)
+                                        Row(children: [
+                                          const Icon(Icons.location_on_rounded,
+                                              size: 13, color: Colors.white70),
+                                          const SizedBox(width: 3),
+                                          Expanded(
+                                            child: Text(g['location'],
+                                                style: const TextStyle(
+                                                    color: Colors.white70,
+                                                    fontSize: 12),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis),
+                                          ),
+                                        ]),
+                                    ],
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => BookingHelper.showBookingDialog(context, g),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      gradient: AppTheme.primaryGradient,
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                            color: AppTheme.primaryColor
+                                                .withValues(alpha: 0.4),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 3)),
+                                      ],
+                                    ),
+                                    child: const Text('Book Now',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                              ]),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Text(
-                        category['name'],
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                AutoScrollingImageRow(
-                  category: category['name'],
-                  imageAssets: List<String>.from(category['images']),
-                ),
-              ],
-            ),
-          )),
-          
-          // Bottom Spacing
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 120), // Extra space for bottom nav
-          ),
+              );
+            }),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 120)),
         ],
       ),
     );
   }
 
-  Widget _buildQuickActionCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Gradient gradient,
-    required VoidCallback onTap,
-  }) {
+  Widget _quickCard(BuildContext context,
+      {required IconData icon,
+      required String title,
+      required String subtitle,
+      required Gradient gradient,
+      required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -399,10 +590,9 @@ class _HomeState extends State<Home> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 4)),
           ],
         ),
         child: Padding(
@@ -410,27 +600,17 @@ class _HomeState extends State<Home> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                icon,
-                color: Colors.white,
-                size: 28,
-              ),
+              Icon(icon, color: Colors.white, size: 28),
               const Spacer(),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 12,
-                ),
-              ),
+              Text(title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold)),
+              Text(subtitle,
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 12)),
             ],
           ),
         ),

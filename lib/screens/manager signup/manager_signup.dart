@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../main.dart';
 import '../../services/auth_service.dart';
+import '../../services/cloudinary_service.dart';
+import '../../services/ground_service.dart';
+import '../../services/user_service.dart';
+import '../map_location_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 class ManagerSignup extends StatefulWidget {
   const ManagerSignup({super.key});
@@ -28,6 +33,17 @@ class _ManagerSignupState extends State<ManagerSignup> {
 
   final ImagePicker picker = ImagePicker();
   List<XFile> selectedImages = [];
+  String? selectedCategory;
+  LatLng? _selectedLatLng;
+
+  static const List<String> _categories = [
+    'Cricket',
+    'Football',
+    'Tennis',
+    'Basketball',
+    'Hockey',
+    'Volleyball',
+  ];
 
   @override
   void dispose() {
@@ -41,76 +57,117 @@ class _ManagerSignupState extends State<ManagerSignup> {
     super.dispose();
   }
 
+  Future<void> _openMapPicker() async {
+    final result = await Navigator.push<LocationResult>(
+      context,
+      MaterialPageRoute(builder: (_) => const MapLocationPicker()),
+    );
+    if (result != null) {
+      setState(() {
+        venueLocation.text = result.address;
+        _selectedLatLng = result.latLng;
+      });
+    }
+  }
+
   Future<void> _handleSignup() async {
     if (!formKey.currentState!.validate()) return;
 
+    if (selectedCategory == null) {
+      _showSnack('Please select a sport category', AppTheme.warningColor);
+      return;
+    }
+
     if (selectedImages.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.warning, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Upload at least 1 venue image',
-                  style: TextStyle(color: Colors.white),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: AppTheme.warningColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      _showSnack('Upload at least 1 venue image', AppTheme.warningColor);
       return;
     }
 
     setState(() => isLoading = true);
 
-    final userCredential = await _authService.signUpWithEmail(
-      email: email.text,
-      password: password.text,
-      context: context,
-    );
+    try {
+      // 1. Firebase Auth signup
+      final userCredential = await _authService.signUpWithEmail(
+        email: email.text.trim(),
+        password: password.text.trim(),
+        context: context,
+      );
 
-    if (userCredential != null) {
-      // Update user profile with display name
+      if (userCredential == null) {
+        // signUpWithEmail already shows error snackbar
+        setState(() => isLoading = false);
+        return;
+      }
+
+      final uid = userCredential.user!.uid;
+
+      // 2. Firebase Auth display name update
       await _authService.updateProfile(displayName: fullName.text.trim());
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle_outline, color: Colors.white),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Manager account created successfully!',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: AppTheme.successColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
+      // 3. Cloudinary image upload (optional — agar fail ho to empty list se continue karo)
+      List<String> venueImageUrls = [];
+      try {
+        venueImageUrls = await CloudinaryService.uploadMultipleImages(
+          selectedImages.map((x) => File(x.path)).toList(),
+          folder: 'venues',
         );
-
-        // Navigate to login
-        Navigator.pushReplacementNamed(context, '/ManagerLogIn');
+      } catch (_) {
+        // Image upload fail — continue without images
       }
-    }
 
-    setState(() => isLoading = false);
+      // 4. Firestore mein manager data save karo
+      await UserService.saveManager(
+        uid: uid,
+        fullName: fullName.text.trim(),
+        email: email.text.trim(),
+        mobile: mobileNo.text.trim(),
+        cnic: cnic.text.trim(),
+        venueName: venueName.text.trim(),
+        venueLocation: venueLocation.text.trim(),
+        category: selectedCategory!,
+        imageUrls: venueImageUrls,
+        latitude: _selectedLatLng?.latitude,
+        longitude: _selectedLatLng?.longitude,
+      );
+
+      // 5. Ground create karo Firestore mein
+      await GroundService.createGround(
+        managerId: uid,
+        managerName: fullName.text.trim(),
+        managerEmail: email.text.trim(),
+        venueName: venueName.text.trim(),
+        venueLocation: venueLocation.text.trim(),
+        category: selectedCategory!,
+        imageUrls: venueImageUrls,
+        latitude: _selectedLatLng?.latitude,
+        longitude: _selectedLatLng?.longitude,
+      );
+
+      if (mounted) {
+        _showSnack('Manager account created successfully!', AppTheme.successColor);
+        // Directly dashboard pe navigate karo
+        Navigator.pushReplacementNamed(context, '/ManagerHome');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showSnack('Something went wrong. Please try again.', AppTheme.errorColor);
+      }
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  void _showSnack(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   Future<void> pickImages() async {
@@ -334,17 +391,58 @@ class _ManagerSignupState extends State<ManagerSignup> {
                             
                             SizedBox(height: size.height * 0.018),
                             
-                            TextFormField(
-                              controller: venueLocation,
-                              decoration: const InputDecoration(
-                                prefixIcon: Icon(
-                                  Icons.location_on_outlined,
-                                  color: AppTheme.secondaryColor,
+                            // Location field — map picker
+                            GestureDetector(
+                              onTap: _openMapPicker,
+                              child: AbsorbPointer(
+                                child: TextFormField(
+                                  controller: venueLocation,
+                                  maxLines: 2,
+                                  decoration: InputDecoration(
+                                    prefixIcon: const Icon(
+                                      Icons.location_on_outlined,
+                                      color: AppTheme.secondaryColor,
+                                    ),
+                                    suffixIcon: Container(
+                                      margin: const EdgeInsets.all(8),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        gradient: AppTheme.secondaryGradient,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Text(
+                                        'Map',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    hintText: 'Tap to pick on map',
+                                    labelText: 'Location',
+                                  ),
+                                  validator: (v) => v == null || v.isEmpty ? 'Pick a location' : null,
                                 ),
-                                hintText: 'Enter location',
-                                labelText: 'Location',
                               ),
-                              validator: (v) => v == null || v.isEmpty ? 'Enter location' : null,
+                            ),
+                            
+                            SizedBox(height: size.height * 0.018),
+                            
+                            // Category Dropdown
+                            DropdownButtonFormField<String>(
+                              initialValue: selectedCategory,
+                              decoration: const InputDecoration(
+                                prefixIcon: Icon(Icons.sports_outlined, color: AppTheme.secondaryColor),
+                                labelText: 'Sport Category',
+                                hintText: 'Select sport type',
+                              ),
+                              items: _categories.map((cat) => DropdownMenuItem(
+                                value: cat,
+                                child: Text(cat),
+                              )).toList(),
+                              onChanged: (val) => setState(() => selectedCategory = val),
+                              validator: (v) => v == null ? 'Select a category' : null,
                             ),
                             
                             SizedBox(height: size.height * 0.018),

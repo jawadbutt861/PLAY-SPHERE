@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../main.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/cloudinary_service.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -17,8 +18,10 @@ class _ProfileState extends State<Profile> {
   final AuthService _authService = AuthService();
   final ImagePicker _picker = ImagePicker();
   File? _image;
+  String? _imageUrl; // Cloudinary URL
   String _userName = 'User';
   String _userEmail = '';
+  bool _isUploadingImage = false;
 
   @override
   void initState() {
@@ -32,17 +35,16 @@ class _ProfileState extends State<Profile> {
     
     if (user != null) {
       setState(() {
-        // Load name and email from Firebase Auth
         _userName = user.displayName ?? 'User';
         _userEmail = user.email ?? '';
       });
       
-      // Load profile image from SharedPreferences (stored per user)
+      // Load profile image URL from SharedPreferences
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? imagePath = prefs.getString('imagePath_${user.uid}');
-      if (imagePath != null && imagePath.isNotEmpty && File(imagePath).existsSync()) {
+      String? imageUrl = prefs.getString('imageUrl_${user.uid}');
+      if (imageUrl != null && imageUrl.isNotEmpty) {
         setState(() {
-          _image = File(imagePath);
+          _imageUrl = imageUrl;
         });
       }
     }
@@ -58,27 +60,35 @@ class _ProfileState extends State<Profile> {
       if (pickedFile != null) {
         setState(() {
           _image = File(pickedFile.path);
+          _isUploadingImage = true;
         });
-        
-        // Save image path to SharedPreferences
-        User? user = _authService.currentUser;
-        if (user != null) {
-          SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setString('imagePath_${user.uid}', pickedFile.path);
-          
-          _showSnackBar(
-            'Profile picture updated!',
-            AppTheme.successColor,
-            Icons.check_circle_outline,
-          );
+
+        // Upload to Cloudinary
+        final url = await CloudinaryService.uploadImage(
+          File(pickedFile.path),
+          folder: 'profiles',
+        );
+
+        if (url != null) {
+          // Save Cloudinary URL to SharedPreferences
+          User? user = _authService.currentUser;
+          if (user != null) {
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            await prefs.setString('imageUrl_${user.uid}', url);
+            setState(() {
+              _imageUrl = url;
+              _isUploadingImage = false;
+            });
+          }
+          _showSnackBar('Profile picture updated!', AppTheme.successColor, Icons.check_circle_outline);
+        } else {
+          setState(() => _isUploadingImage = false);
+          _showSnackBar('Failed to upload image', AppTheme.errorColor, Icons.error_outline);
         }
       }
     } catch (e) {
-      _showSnackBar(
-        'Failed to pick image',
-        AppTheme.errorColor,
-        Icons.error_outline,
-      );
+      setState(() => _isUploadingImage = false);
+      _showSnackBar('Failed to pick image', AppTheme.errorColor, Icons.error_outline);
     }
   }
 
@@ -295,10 +305,15 @@ class _ProfileState extends State<Profile> {
                           ),
                           child: CircleAvatar(
                             radius: 60,
-                            backgroundImage: _image != null 
-                                ? FileImage(_image!) 
-                                : const AssetImage('assets/images/profile_placeholder.png') as ImageProvider,
+                            backgroundImage: _imageUrl != null
+                                ? NetworkImage(_imageUrl!) as ImageProvider
+                                : _image != null
+                                    ? FileImage(_image!)
+                                    : const AssetImage('assets/images/profile_placeholder.png') as ImageProvider,
                             backgroundColor: Colors.white,
+                            child: _isUploadingImage
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : null,
                           ),
                         ),
                         Positioned(
@@ -357,30 +372,6 @@ class _ProfileState extends State<Profile> {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
-                  ModernCard(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: _buildProfileOption(
-                      context,
-                      icon: Icons.favorite_rounded,
-                      title: 'Favourite Venues',
-                      subtitle: 'Your saved venues',
-                      gradient: AppTheme.accentGradient,
-                      onTap: () => Navigator.pushNamed(context, '/Favourite'),
-                    ),
-                  ),
-                  ModernCard(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: _buildProfileOption(
-                      context,
-                      icon: Icons.history_rounded,
-                      title: 'Booking History',
-                      subtitle: 'View past bookings',
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF8B5CF6), Color(0xFFA855F7)],
-                      ),
-                      onTap: () => Navigator.pushNamed(context, '/BookingHistory'),
-                    ),
-                  ),
                   ModernCard(
                     margin: const EdgeInsets.only(bottom: 12),
                     child: _buildProfileOption(

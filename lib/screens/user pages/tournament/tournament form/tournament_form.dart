@@ -1,8 +1,14 @@
 // ignore_for_file: unused_local_variable, prefer_final_locals
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../user home/favourite/global_data.dart';
+import '../../../../services/ground_service.dart';
+import '../../../../services/booking_service.dart';
+import '../../../../services/tournament_service.dart';
+import '../../../../services/notification_service.dart';
 
 class TournamentForm extends StatefulWidget {
   const TournamentForm({super.key});
@@ -43,6 +49,8 @@ class _TournamentFormState extends State<TournamentForm> {
   // Payment
   String? selectedPayment;
 
+  bool _isSubmitting = false;
+
   // Fixtures
   List<List<String>> fixtures = [];
 
@@ -51,44 +59,27 @@ class _TournamentFormState extends State<TournamentForm> {
   final List<String> teams = ['4', '6', '8', '10', '12', '14', '16'];
   final List<String> format = ['Single Elimination', 'Double Elimination', 'Round Robin'];
 
-  // Grounds - Using the same structure as categories.dart
-  List<Map<String, dynamic>> sportsGrounds = [
-    // Cricket
-    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Buitems Cricket Ground"},
-    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Shola Cricket Ground"},
-    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Haideri Cricket Ground"},
-    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Bolan Cricket Ground"},
+  // Firestore grounds
+  List<Map<String, dynamic>> sportsGrounds = [];
+  StreamSubscription? _groundsSub;
 
-    // Football
-    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Buitems Football Ground"},
-    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Shahbaz Football Ground"},
-    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Railway Football Ground"},
-    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Spini Football Ground"},
+  @override
+  void initState() {
+    super.initState();
+    _groundsSub = GroundService.getGroundsByCategory('ALL').listen((grounds) {
+      if (mounted) setState(() => sportsGrounds = grounds);
+    });
+  }
 
-    // Tennis
-    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "Buitems Tennis Court"},
-    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "UoB Tennis Court"},
-    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "Alhamd Tennis Court"},
-    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "NUML Court"},
-
-    // Basketball
-    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "Buitems Basketball Court"},
-    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "UoB Basketball Court"},
-    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "Alhamd Basketball Court"},
-    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "NUML Basketball Court"},
-
-    // Hockey
-    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "Ayub Hockey Ground"},
-    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "Buitems Hockey Ground"},
-    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "UoB Hockey Ground"},
-    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "NUML Hockey Ground"},
-
-    // Volleyball
-    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "Buitems Volleyball Court"},
-    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "Ayub Volleyball Court"},
-    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "Alhamd Volleyball Court"},
-    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "UoB Volleyball Court"},
-  ];
+  @override
+  void dispose() {
+    _groundsSub?.cancel();
+    for (var c in teamControllers) { c.dispose(); }
+    name.dispose();
+    startDateController.dispose();
+    endDateController.dispose();
+    super.dispose();
+  }
 
   // Slot generator - consistent with categories.dart
   List<String> getSlots(String category) {
@@ -164,35 +155,36 @@ class _TournamentFormState extends State<TournamentForm> {
   // Book only required grounds for tournament duration
   void _bookAllGroundsForTournament() {
     bookedGrounds.clear();
-    
-    // Calculate only the dates needed for the tournament
     List<DateTime> requiredDates = _calculateRequiredDates();
-    
-    // Book each selected ground for required dates and selected slots
+    final user = FirebaseAuth.instance.currentUser;
+
     for (var ground in selectedGrounds) {
       List<String> slots = selectedSlotsPerGround[ground['name']] ?? [];
       for (var date in requiredDates) {
         for (var slot in slots) {
           String dateStr = DateFormat('yyyy-MM-dd').format(date);
-          
+
           bookedGrounds.add({
             'ground': ground,
             'date': dateStr,
             'slot': slot,
             'payment': selectedPayment,
-            'tournamentId': name.text, // Add tournament identifier
+            'tournamentId': name.text,
+            'isTournament': true,
           });
-          
-          // Add to global tournament bookings to prevent conflicts
+
           GlobalData.addTournamentBooking(ground['name'], dateStr, slot);
-          
-          // Also add to global booked grounds
+
+          // GlobalData mein tournament booking add karo
           GlobalData.bookedGrounds.add({
             'ground': ground,
             'date': dateStr,
             'slot': slot,
             'payment': selectedPayment,
             'tournamentId': name.text,
+            'isTournament': true,
+            'status': 'confirmed',
+            'bookingId': '',
           });
         }
       }
@@ -344,9 +336,13 @@ class _TournamentFormState extends State<TournamentForm> {
           'matchType': matchType,
           'date': assignedSlot?['date'] ?? '',
           'time': assignedSlot?['slot'] ?? '',
-          'ground': assignedSlot?['ground']['name'] ?? '',
-          'status': 'scheduled', // scheduled, in_progress, completed
-          'result': null, // win, abandoned
+          'ground': assignedSlot != null
+              ? ((assignedSlot['ground'] as Map?)?['name'] as String? ??
+                  assignedSlot['groundName'] as String? ??
+                  '')
+              : '',
+          'status': 'scheduled',
+          'result': null,
           'winner': null,
           'createdAt': DateTime.now().toIso8601String(),
         });
@@ -387,7 +383,7 @@ class _TournamentFormState extends State<TournamentForm> {
   }
 
   // Move to next step or page
-  void _nextStep() {
+  void _nextStep() async {
     if (currentStep == 0) {
       if (_formKey.currentState!.validate()) {
         if (selectedTeam == null || selectedFormat == null || selectedSport == null) {
@@ -409,8 +405,12 @@ class _TournamentFormState extends State<TournamentForm> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Select at least one ground")));
         return;
       }
+      // Agle step ke liye booked slots pre-fetch karo
+      _fetchBookedSlotsForGrounds();
       setState(() => currentStep++);
     } else if (currentStep == 3) {
+      // Slots step mein enter karte waqt Firestore se booked slots fetch karo
+      await _fetchBookedSlotsForGrounds();
       bool allHaveSlots = selectedGrounds.every((g) {
         final name = g['name'];
         final picked = selectedSlotsPerGround[name] ?? [];
@@ -426,50 +426,99 @@ class _TournamentFormState extends State<TournamentForm> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select a payment method")));
         return;
       }
-      
+
+      // Loading show karo
+      setState(() => _isSubmitting = true);
+
       // Create fixtures first to calculate required dates
       _createFixtures();
-      
-      // Book only required grounds for tournament duration
       _bookAllGroundsForTournament();
       _assignGroundsToFixtures();
-      
-      // Create scheduled matches
       List<Map<String, dynamic>> scheduledMatches = _createScheduledMatches();
-      
-      // Create tournament data
-      String tournamentId = DateTime.now().millisecondsSinceEpoch.toString();
+
+      final user = FirebaseAuth.instance.currentUser;
       List<String> teamNames = teamControllers.map((c) => c.text.trim()).toList();
-      
+
       Map<String, dynamic> tournamentData = {
-        'id': tournamentId,
         'name': name.text,
         'sport': selectedSport ?? '',
         'format': selectedFormat ?? '',
         'teams': int.parse(selectedTeam ?? '0'),
         'startDate': startDateController.text,
         'endDate': endDateController.text,
-        'actualEndDate': _calculateRequiredDates().isNotEmpty 
+        'actualEndDate': _calculateRequiredDates().isNotEmpty
             ? DateFormat('yyyy-MM-dd').format(_calculateRequiredDates().last)
             : endDateController.text,
         'bookedGrounds': bookedGrounds,
-        'fixtures': fixtures, // Keep for backward compatibility
-        'matches': scheduledMatches, // New detailed match system
+        'fixtures': fixtures,
+        'matches': scheduledMatches,
         'teamNames': teamNames,
         'status': 'active',
+        'createdBy': user?.uid ?? '',
+        'createdByName': user?.displayName ?? user?.email ?? '',
         'createdAt': DateTime.now().toIso8601String(),
       };
-      
-      // Initialize tournament in global data
-      GlobalData.initializeTournament(tournamentId, teamNames, scheduledMatches);
-      
-      // Add to global tournaments
-      GlobalData.tournaments.add(tournamentData);
-      
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Tournament created successfully! Payment via $selectedPayment")));
-      
-      // Navigate back to tournament page with tournament data
-      Navigator.pop(context, tournamentData);
+
+      try {
+        // Firestore mein save karo aur ID lo
+        final firestoreId = await TournamentService.createTournament(tournamentData);
+        if (firestoreId == null) throw Exception('Failed to save tournament');
+
+        // Firestore ID use karo everywhere
+        tournamentData['id'] = firestoreId;
+
+        // GlobalData initialize karo Firestore ID se
+        GlobalData.initializeTournament(firestoreId, teamNames, scheduledMatches);
+
+        // Bookings save karo Firestore ID ke saath
+        for (final bg in bookedGrounds) {
+          final ground = bg['ground'] as Map<String, dynamic>? ?? {};
+          BookingService.createBooking(
+            groundId: ground['id'] ?? '',
+            groundName: ground['name'] ?? '',
+            groundCategory: ground['category'] ?? '',
+            managerId: ground['managerId'] ?? '',
+            userId: user?.uid ?? '',
+            userEmail: user?.email ?? '',
+            userName: user?.displayName ?? user?.email ?? '',
+            date: bg['date'] ?? '',
+            slot: bg['slot'] ?? '',
+            payment: bg['payment'] ?? selectedPayment ?? '',
+            imageUrls: (ground['imageUrls'] as List?)?.cast<String>() ?? [],
+            tournamentId: firestoreId,
+            tournamentName: name.text,
+          );
+        }
+
+        // Saari bookings save hone ke baad ek summary notification bhejo
+        final uniqueManagerIds = bookedGrounds
+            .map((bg) => (bg['ground'] as Map?)?['managerId'] as String? ?? '')
+            .where((id) => id.isNotEmpty)
+            .toSet();
+        for (final mid in uniqueManagerIds) {
+          NotificationService.sendTournamentBookingNotification(
+            managerId: mid,
+            userId: user?.uid ?? '',
+            tournamentName: name.text,
+            creatorName: user?.displayName ?? user?.email ?? '',
+            slotCount: bookedGrounds.length,
+          );
+        }
+
+        if (mounted) {
+          setState(() => _isSubmitting = false);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('Tournament created! Payment via $selectedPayment')));
+          Navigator.pop(context, tournamentData);
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isSubmitting = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Failed to create tournament. Try again.'),
+                  backgroundColor: Colors.red));
+        }
+      }
     }
   }
 
@@ -561,36 +610,57 @@ class _TournamentFormState extends State<TournamentForm> {
   }
 
   Widget _groundsSelectionStep() {
-    List<Map<String, dynamic>> filtered = sportsGrounds.where((g) => g['category'] == selectedSport).toList();
-    
+    List<Map<String, dynamic>> filtered = sportsGrounds
+        .where((g) => (g['category'] ?? '') == selectedSport)
+        .toList();
+
+    if (sportsGrounds.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     if (filtered.isEmpty) {
       return const Center(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(16),
           child: Text(
-            "No grounds available for selected sport",
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+            "No grounds available for selected sport.\nAsk a manager to register one.",
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+            textAlign: TextAlign.center,
           ),
         ),
       );
     }
-    
+
     return Column(
       children: filtered.map((g) {
-        bool selected = selectedGrounds.any((sg) => sg['name'] == g['name']);
-        
+        bool selected = selectedGrounds.any((sg) => sg['id'] == g['id']);
+        final imageUrls = (g['imageUrls'] as List?)?.cast<String>() ?? [];
+
         return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+          margin: const EdgeInsets.symmetric(vertical: 4),
           elevation: 2,
           child: CheckboxListTile(
-            title: Text(
-              g['name'],
-              style: const TextStyle(fontWeight: FontWeight.w500),
+            secondary: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: imageUrls.isNotEmpty
+                    ? Image.network(imageUrls.first, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.sports))
+                    : const Icon(Icons.sports),
+              ),
             ),
-            subtitle: Text(
-              g['category'],
-              style: const TextStyle(color: Colors.grey),
-            ),
+            title: Text(g['name'] ?? '',
+                style: const TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text(g['location'] ?? g['category'] ?? '',
+                style: const TextStyle(color: Colors.grey, fontSize: 12)),
             value: selected,
             activeColor: const Color(0xFF1A659E),
             onChanged: (v) {
@@ -599,7 +669,7 @@ class _TournamentFormState extends State<TournamentForm> {
                   selectedGrounds.add(g);
                   selectedSlotsPerGround.putIfAbsent(g['name'], () => []);
                 } else {
-                  selectedGrounds.removeWhere((sg) => sg['name'] == g['name']);
+                  selectedGrounds.removeWhere((sg) => sg['id'] == g['id']);
                   selectedSlotsPerGround.remove(g['name']);
                 }
               });
@@ -610,62 +680,133 @@ class _TournamentFormState extends State<TournamentForm> {
     );
   }
 
+  // Firestore se booked slots cache — groundId -> date -> List<slot>
+  final Map<String, Map<String, List<String>>> _firestoreBookedSlots = {};
+  bool _loadingBookedSlots = false;
+
+  /// Selected grounds aur dates ke liye Firestore se booked slots fetch karo
+  Future<void> _fetchBookedSlotsForGrounds() async {
+    if (pickedStartDate == null || selectedGrounds.isEmpty) return;
+    setState(() => _loadingBookedSlots = true);
+    _firestoreBookedSlots.clear();
+
+    // Start date se end date tak + 30 extra days (tournament duration cover karo)
+    final end = pickedEndDate ?? pickedStartDate!.add(const Duration(days: 60));
+    final days = end.difference(pickedStartDate!).inDays + 1;
+    final dates = List.generate(days, (i) {
+      final d = pickedStartDate!.add(Duration(days: i));
+      return '${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
+    });
+
+    for (final g in selectedGrounds) {
+      final gid = g['id'] as String? ?? '';
+      if (gid.isEmpty) continue;
+      _firestoreBookedSlots[gid] = {};
+      for (final date in dates) {
+        try {
+          final slots = await BookingService.getBookedSlots(gid, date);
+          if (slots.isNotEmpty) _firestoreBookedSlots[gid]![date] = slots;
+        } catch (e) {
+          debugPrint('fetchBookedSlots ERROR: $e');
+        }
+      }
+    }
+    if (mounted) setState(() => _loadingBookedSlots = false);
+  }
+
+  bool _isSlotBookedOnAnyDate(String groundId, String slot) {
+    final groundSlots = _firestoreBookedSlots[groundId];
+    if (groundSlots == null || groundSlots.isEmpty) return false;
+    // Check if this slot is booked on ANY of the tournament dates
+    return groundSlots.values.any((slots) => slots.contains(slot));
+  }
+
   Widget _slotsSelectionStep() {
+    if (_loadingBookedSlots) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 12),
+            Text('Checking available slots...', style: TextStyle(color: Colors.grey)),
+          ]),
+        ),
+      );
+    }
     return Column(
       children: selectedGrounds.map((g) {
         String gName = g['name'];
+        String gId = g['id'] as String? ?? '';
         String category = g['category'];
         List<String> available = getSlots(category);
         List<String> picked = selectedSlotsPerGround[gName] ?? [];
-        
+
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
           elevation: 3,
           child: ExpansionTile(
-            title: Text(
-              gName,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
+            title: Text(gName,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             subtitle: Text(
-              "Selected: ${picked.length} slot(s) • ${category}",
+              "Selected: ${picked.length} slot(s) • $category",
               style: const TextStyle(color: Colors.grey, fontSize: 12),
             ),
             children: available.map((slot) {
               bool checked = picked.contains(slot);
-              bool isDisabled = false;
-              
-              // Handle cricket slot conflicts
+              // Firestore mein already booked hai?
+              bool isFirestoreBooked = _isSlotBookedOnAnyDate(gId, slot);
+              bool isDisabled = isFirestoreBooked;
+
+              // Handle cricket slot conflicts — Firestore booked + user picked
               if (category == "Cricket") {
                 if (slot == "Full-day") {
-                  isDisabled = picked.contains("9am to 2pm") || picked.contains("2pm to 6pm");
+                  // Full-day disable if any partial slot is booked (Firestore) OR picked by user
+                  final partialFirestoreBooked =
+                      _isSlotBookedOnAnyDate(gId, "9am to 2pm") ||
+                      _isSlotBookedOnAnyDate(gId, "2pm to 6pm");
+                  isDisabled = isDisabled ||
+                      partialFirestoreBooked ||
+                      picked.contains("9am to 2pm") ||
+                      picked.contains("2pm to 6pm");
                 } else {
-                  isDisabled = picked.contains("Full-day");
+                  // Partial slots disable if Full-day is booked (Firestore) OR picked by user
+                  final fullDayFirestoreBooked = _isSlotBookedOnAnyDate(gId, "Full-day");
+                  isDisabled = isDisabled ||
+                      fullDayFirestoreBooked ||
+                      picked.contains("Full-day");
                 }
               }
-              
+
+              String? subtitle;
+              if (isFirestoreBooked) {
+                subtitle = "Already booked by another tournament";
+              } else if (category == "Cricket" && isDisabled) {
+                subtitle = slot == "Full-day"
+                    ? "Cannot select with individual slots"
+                    : "Cannot select with full-day";
+              }
+
               return CheckboxListTile(
                 dense: true,
                 title: Text(
-                  slot,
+                  isFirestoreBooked ? '$slot (Booked)' : slot,
                   style: TextStyle(
                     color: isDisabled ? Colors.grey : const Color.fromARGB(255, 255, 255, 255),
                     fontSize: 13,
                   ),
                 ),
-                subtitle: category == "Cricket" && isDisabled 
-                    ? Text(
-                        slot == "Full-day" 
-                            ? "Cannot select with individual slots" 
-                            : "Cannot select with full-day",
-                        style: const TextStyle(color: Colors.red, fontSize: 11),
-                      )
+                subtitle: subtitle != null
+                    ? Text(subtitle,
+                        style: TextStyle(
+                            color: isFirestoreBooked ? Colors.red : Colors.orange,
+                            fontSize: 11))
                     : null,
                 value: checked,
                 activeColor: const Color(0xFF1A659E),
                 onChanged: isDisabled ? null : (v) {
                   setState(() {
                     if (v == true) {
-                      // For cricket, clear conflicting slots
                       if (category == "Cricket") {
                         if (slot == "Full-day") {
                           picked.removeWhere((s) => s == "9am to 2pm" || s == "2pm to 6pm");
@@ -749,7 +890,7 @@ class _TournamentFormState extends State<TournamentForm> {
                           runSpacing: 8,
                           children: [
                             ElevatedButton(
-                              onPressed: details.onStepContinue,
+                              onPressed: _isSubmitting ? null : details.onStepContinue,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF00D9FF),
                                 foregroundColor: Colors.white,
@@ -760,10 +901,15 @@ class _TournamentFormState extends State<TournamentForm> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 elevation: 4,
                               ),
-                              child: Text(
-                                currentStep == 4 ? "Create Tournament" : "Next",
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                              ),
+                              child: _isSubmitting && currentStep == 4
+                                  ? const SizedBox(
+                                      width: 20, height: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white))
+                                  : Text(
+                                      currentStep == 4 ? "Create Tournament" : "Next",
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    ),
                             ),
                             if (currentStep > 0)
                               OutlinedButton(

@@ -1,6 +1,9 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'global_data.dart';
 import 'booking_helper.dart';
+import '../../../../main.dart';
 
 class Favourite extends StatefulWidget {
   const Favourite({super.key});
@@ -10,127 +13,213 @@ class Favourite extends StatefulWidget {
 }
 
 class _FavouriteState extends State<Favourite> {
+  final _db = FirebaseFirestore.instance;
+  final String? _uid = FirebaseAuth.instance.currentUser?.uid;
+  List<Map<String, dynamic>> _favourites = [];
+  bool _loading = true;
+  StreamSubscription? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_uid != null) {
+      _sub = _db
+          .collection('users')
+          .doc(_uid)
+          .collection('favourites')
+          .snapshots()
+          .listen((snap) {
+        if (mounted) {
+          setState(() {
+            _favourites = snap.docs
+                .map((d) => {...d.data(), 'favDocId': d.id})
+                .toList();
+            _loading = false;
+          });
+        }
+      }, onError: (_) {
+        if (mounted) setState(() => _loading = false);
+      });
+    } else {
+      setState(() => _loading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _removeFavourite(String favDocId, String name) async {
+    if (_uid == null) return;
+    await _db
+        .collection('users')
+        .doc(_uid)
+        .collection('favourites')
+        .doc(favDocId)
+        .delete();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('$name removed from favourites'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppTheme.errorColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final favourites = GlobalData.favouriteGrounds;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          "Favourite Venues",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: const Color(0xFF1A659E),
-      ),
-      body: favourites.isEmpty
-          ? const Center(child: Text("No favourite venues yet 😢"))
-          : ListView.builder(
-        padding: const EdgeInsets.all(10),
-        itemCount: favourites.length,
-        itemBuilder: (context, index) {
-          final ground = favourites[index];
+      backgroundColor: colorScheme.surface,
+      appBar: const ModernAppBar(title: 'Favourite Venues'),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _favourites.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.favorite_border_rounded,
+                          size: 64, color: colorScheme.onSurfaceVariant),
+                      const SizedBox(height: 16),
+                      Text('No favourite venues yet',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                              color: colorScheme.onSurfaceVariant)),
+                      const SizedBox(height: 8),
+                      Text('Tap the heart icon on any venue to save it',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant)),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _favourites.length,
+                  itemBuilder: (context, index) {
+                    final ground = _favourites[index];
+                    final imageUrls =
+                        (ground['imageUrls'] as List?)?.cast<String>() ?? [];
+                    final favDocId = ground['favDocId'] as String? ?? '';
 
-          return Card(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
-            elevation: 4,
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Image
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image(
-                      image: ground['image'],
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Content
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          ground['name'],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                    return ModernCard(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: EdgeInsets.zero,
+                      child: Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(20)),
+                            child: SizedBox(
+                              height: 140,
+                              width: double.infinity,
+                              child: imageUrls.isNotEmpty
+                                  ? Image.network(imageUrls.first,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          _placeholder(colorScheme))
+                                  : _placeholder(colorScheme),
+                            ),
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        // Buttons
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  BookingHelper.showBookingDialog(context, ground);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF26A69A),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 8,
-                                  ),
-                                  minimumSize: const Size(0, 36),
-                                ),
-                                icon: const Icon(Icons.book_online, size: 16),
-                                label: const Text(
-                                  "Book",
-                                  style: TextStyle(fontSize: 12),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  setState(() {
-                                    GlobalData.favouriteGrounds.removeAt(index);
-                                  });
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          "${ground['name']} removed from favourites"),
-                                      behavior: SnackBarBehavior.floating,
-                                      duration: const Duration(seconds: 2),
-                                    ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 8,
-                                  ),
-                                  minimumSize: const Size(0, 36),
-                                ),
-                                icon: const Icon(Icons.delete_outline, size: 16),
-                                label: const Text(
-                                  "Remove",
-                                  style: TextStyle(fontSize: 12),
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(ground['name'] ?? '',
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                                fontWeight: FontWeight.bold),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis),
+                                    const SizedBox(height: 4),
+                                    Row(children: [
+                                      const Icon(Icons.sports_outlined,
+                                          size: 14,
+                                          color: AppTheme.primaryColor),
+                                      const SizedBox(width: 4),
+                                      Text(ground['category'] ?? '',
+                                          style: theme.textTheme.bodySmall),
+                                      if ((ground['location'] ?? '')
+                                          .isNotEmpty) ...[
+                                        const SizedBox(width: 8),
+                                        const Icon(Icons.location_on_outlined,
+                                            size: 14,
+                                            color: AppTheme.primaryColor),
+                                        const SizedBox(width: 2),
+                                        Expanded(
+                                          child: Text(
+                                              ground['location'] ?? '',
+                                              style:
+                                                  theme.textTheme.bodySmall,
+                                              maxLines: 1,
+                                              overflow:
+                                                  TextOverflow.ellipsis),
+                                        ),
+                                      ],
+                                    ]),
+                                  ],
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+                            ]),
+                          ),
+                          Padding(
+                            padding:
+                                const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                            child: Row(children: [
+                              Expanded(
+                                child: GradientButton(
+                                  text: 'Book Now',
+                                  icon: Icons.book_online_outlined,
+                                  height: 42,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  textStyle: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold),
+                                  onPressed: () =>
+                                      BookingHelper.showBookingDialog(
+                                          context, ground),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: GradientButton(
+                                  text: 'Remove',
+                                  icon: Icons.favorite_rounded,
+                                  gradient: const LinearGradient(colors: [
+                                    Color(0xFFEF4444),
+                                    Color(0xFFDC2626)
+                                  ]),
+                                  height: 42,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  textStyle: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold),
+                                  onPressed: () => _removeFavourite(
+                                      favDocId, ground['name'] ?? ''),
+                                ),
+                              ),
+                            ]),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
     );
   }
+
+  Widget _placeholder(ColorScheme c) => Container(
+      color: c.surfaceContainerHighest,
+      child: Icon(Icons.sports, color: c.onSurfaceVariant, size: 48));
 }

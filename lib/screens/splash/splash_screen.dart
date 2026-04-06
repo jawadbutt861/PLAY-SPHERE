@@ -15,7 +15,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   late AnimationController _backgroundController;
   
   late Animation<double> _logoScaleAnimation;
-  late Animation<double> _logoRotationAnimation;
   late Animation<double> _textFadeAnimation;
   late Animation<Offset> _textSlideAnimation;
   late Animation<double> _backgroundAnimation;
@@ -47,13 +46,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       CurvedAnimation(
         parent: _logoController,
         curve: Curves.elasticOut,
-      ),
-    );
-    
-    _logoRotationAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _logoController,
-        curve: Curves.easeInOut,
       ),
     );
     

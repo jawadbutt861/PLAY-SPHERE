@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_map/flutter_map.dart' as flutter_map;
+import 'package:latlong2/latlong.dart' as latlong2;
 import "package:f_y_p/screens/user%20pages/user%20home/favourite/global_data.dart";
 import '../../../main.dart';
+import '../../../services/ground_service.dart';
+import '../../../services/booking_service.dart';
 
 
 
@@ -15,9 +22,67 @@ class Categories extends StatefulWidget {
 
 class _CategoriesState extends State<Categories> {
   int selectedIndex = 0;
- // List<Map<String, dynamic>> favouriteGrounds = [ ]; // push this in home page
-  //List<Map<String, dynamic>> bookedGrounds = []; // New list to track booked grounds with details
-  Map<String, Map<String, List<String>>> bookedSlots = {}; // groundName -> date (yyyy-MM-dd) -> list of booked slots
+  Map<String, Map<String, List<String>>> bookedSlots = {};
+  List<Map<String, dynamic>> _firestoreGrounds = [];
+  bool _isLoadingGrounds = true;
+  String? _fetchError;
+  StreamSubscription? _groundsSub;
+
+  // Favourites — Firestore backed
+  final _db = FirebaseFirestore.instance;
+  final String? _uid = FirebaseAuth.instance.currentUser?.uid;
+  Set<String> _favouriteIds = {};
+  StreamSubscription? _favSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToGrounds();
+    if (_uid != null) {
+      _favSub = _db
+          .collection('users')
+          .doc(_uid)
+          .collection('favourites')
+          .snapshots()
+          .listen((snap) {
+        if (mounted) {
+          setState(() {
+            _favouriteIds = snap.docs.map((d) => d.id).toSet();
+          });
+        }
+      });
+    }
+  }
+
+  void _listenToGrounds() {
+    _groundsSub = GroundService.getGroundsByCategory('ALL').listen(
+      (grounds) {
+        if (mounted) {
+          setState(() {
+            _firestoreGrounds = grounds;
+            _isLoadingGrounds = false;
+            _fetchError = null;
+          });
+        }
+      },
+      onError: (e) {
+        debugPrint('Categories stream error: $e');
+        if (mounted) {
+          setState(() {
+            _isLoadingGrounds = false;
+            _fetchError = e.toString();
+          });
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _groundsSub?.cancel();
+    _favSub?.cancel();
+    super.dispose();
+  }
 
   List<Map<String, dynamic>> categories = [
     {
@@ -57,44 +122,68 @@ class _CategoriesState extends State<Categories> {
     },
   ];
 
-  // 🏏 Full list of grounds (4 per category)
-  List<Map<String, dynamic>> sports = [
-    // Cricket
-    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Buitems Cricket Ground "},
-    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Shola Cricket Ground "},
-    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Haideri Cricket Ground "},
-    {'image': AssetImage('assets/images/c1.jpeg'), 'category': "Cricket", 'name': "Bolan Cricket Ground "},
+  Future<void> _toggleFavourite(Map<String, dynamic> ground) async {
+    if (_uid == null) return;
+    final groundId = ground['id'] as String? ?? ground['name'] as String? ?? '';
+    if (groundId.isEmpty) return;
+    final ref = _db.collection('users').doc(_uid).collection('favourites').doc(groundId);
+    if (_favouriteIds.contains(groundId)) {
+      await ref.delete();
+    } else {
+      // Save ground data so favourite screen can display it offline
+      await ref.set({
+        'id': groundId,
+        'name': ground['name'] ?? '',
+        'category': ground['category'] ?? '',
+        'location': ground['location'] ?? '',
+        'imageUrls': ground['imageUrls'] ?? [],
+        'managerId': ground['managerId'] ?? '',
+        'latitude': ground['latitude'],
+        'longitude': ground['longitude'],
+        'dayPrice': ground['dayPrice'],
+        'nightPrice': ground['nightPrice'],
+        'savedAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
 
-    // Football
-    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Buitems Football Ground "},
-    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Shahbaz Football Ground "},
-    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Railway Football Ground "},
-    {'image': AssetImage('assets/images/f1.jpg'), 'category': "Football", 'name': "Spini Football Ground "},
+  void _openLocationOnMap(BuildContext context, Map<String, dynamic> ground) {
+    final lat = ground['latitude'];
+    final lng = ground['longitude'];
+    final location = ground['location'] ?? '';
 
-    // Tennis
-    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "Buitems Tennis Court "},
-    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "UoB Tennis Court "},
-    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "Alhamd Tennis Court "},
-    {'image': AssetImage('assets/images/t1.jpeg'), 'category': "Tennis", 'name': "NUML Court "},
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _LocationBottomSheet(
+        groundName: ground['name'] ?? '',
+        location: location,
+        latitude: lat is num ? lat.toDouble() : null,
+        longitude: lng is num ? lng.toDouble() : null,
+      ),
+    );
+  }
 
-    // Basketball
-    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "Buitems Basketball Court "},
-    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "UoB Basketball Court "},
-    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "Alhamd Basketball Court "},
-    {'image': AssetImage('assets/images/b1.webp'), 'category': "Basketball", 'name': "NUML Basketball Court "},
-
-    // Hockey
-    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "Ayub Hockey Ground "},
-    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "Buitems Hockey Ground "},
-    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "UoB Hockey Ground "},
-    {'image': AssetImage('assets/images/h1.webp'), 'category': "Hockey", 'name': "NUML Hockey Ground "},
-
-    // Volleyball
-    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "Buitems Volleyball Court "},
-    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "Ayub Volleyball Court "},
-    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "Alhamd Volleyball Court "},
-    {'image': AssetImage('assets/images/v1.jpg'), 'category': "Volleyball", 'name': "UoB Volleyball Court "},
-  ];
+  Widget _buildFirestoreImage(Map<String, dynamic> ground) {
+    final imageUrls = (ground['imageUrls'] as List?)?.cast<String>() ?? [];
+    if (imageUrls.isEmpty) {
+      return Container(
+        color: Colors.grey[800],
+        child: const Icon(Icons.sports, color: Colors.white54, size: 48),
+      );
+    }
+    return Image.network(
+      imageUrls.first,
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        color: Colors.grey[800],
+        child: const Icon(Icons.broken_image, color: Colors.white54, size: 48),
+      ),
+    );
+  }
 
   List<String> getSlots(String category) {
     if (category == "Cricket") {
@@ -114,298 +203,10 @@ class _CategoriesState extends State<Categories> {
   }
 
   void _showBookingDialog(Map<String, dynamic> ground) {
-    List<String> payments = ["JazzCash", "EasyPaisa"];
-    DateTime? selectedDate;
-    String? selectedSlot;
-    String? selectedPayment;
-
+    final outerContext = context;
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              contentPadding: const EdgeInsets.all(20),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.sports_outlined,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      "Book Venue",
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              content: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.85,
-                  maxHeight: MediaQuery.of(context).size.height * 0.6,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                    GradientButton(
-                      text: selectedDate == null ? "Select Date" : "${selectedDate!.toLocal()}".split(' ')[0],
-                      onPressed: () async {
-                        DateTime? picked = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now().add(const Duration(days: 1)),
-                          firstDate: DateTime.now().add(const Duration(days: 1)),
-                          lastDate: DateTime.now().add(const Duration(days: 30)),
-                          builder: (context, child) {
-                            return Theme(
-                              data: Theme.of(context).copyWith(
-                                colorScheme: Theme.of(context).colorScheme.copyWith(
-                                  primary: AppTheme.primaryColor,
-                                ),
-                              ),
-                              child: child!,
-                            );
-                          },
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            selectedDate = picked;
-                            selectedSlot = null;
-                          });
-                        }
-                      },
-                      icon: Icons.calendar_today,
-                      width: double.infinity,
-                      height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      textStyle: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (selectedDate != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        "Select Time Slot:",
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                      ...getSlots(ground['category']).map((slot) {
-                        String dateKey = selectedDate!.toIso8601String().split('T')[0];
-                        List<String> booked = bookedSlots[ground['name']]?[dateKey] ?? [];
-                        bool isBooked = booked.contains(slot);
-                        
-                        // Check for tournament booking conflicts
-                        bool isTournamentBooked = !GlobalData.isSlotAvailable(ground['name'], dateKey, slot);
-                        
-                        bool isDisabled = false;
-                        String displayText = slot;
-                        
-                        if (ground['category'] == "Cricket") {
-                          if (slot == "Full-day") {
-                            isDisabled = booked.contains("9am to 2pm") || booked.contains("2pm to 6pm") || 
-                                        !GlobalData.isSlotAvailable(ground['name'], dateKey, "9am to 2pm") ||
-                                        !GlobalData.isSlotAvailable(ground['name'], dateKey, "2pm to 6pm");
-                          } else {
-                            isDisabled = booked.contains("Full-day") || 
-                                        !GlobalData.isSlotAvailable(ground['name'], dateKey, "Full-day");
-                          }
-                        }
-                        
-                        if (isBooked) {
-                          displayText = "$slot (Booked)";
-                        } else if (isTournamentBooked) {
-                          displayText = "$slot (Tournament)";
-                          isDisabled = true;
-                        } else if (isDisabled) {
-                          displayText = "$slot (Unavailable)";
-                        }
-                        
-                        return ListTile(
-                          leading: Radio<String>(
-                            value: slot,
-                            groupValue: selectedSlot,
-                            onChanged: (isBooked || isDisabled || isTournamentBooked) ? null : (value) {
-                              setState(() {
-                                selectedSlot = value;
-                              });
-                            },
-                          ),
-                          title: Text(
-                            displayText,
-                            style: TextStyle(
-                              color: (isBooked || isDisabled || isTournamentBooked) ? Colors.grey : null,
-                            ),
-                          ),
-                          onTap: (isBooked || isDisabled || isTournamentBooked) ? null : () {
-                            setState(() {
-                              selectedSlot = slot;
-                            });
-                          },
-                        );
-                      }),
-                    ],
-                    const SizedBox(height: 16),
-                    Text(
-                      "Select Payment Method:",
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
-                    ...payments.map((payment) => ListTile(
-                      leading: Radio<String>(
-                        value: payment,
-                        groupValue: selectedPayment,
-                        onChanged: (value) {
-                          setState(() {
-                            selectedPayment = value;
-                          });
-                        },
-                      ),
-                      title: Text(payment),
-                      onTap: () {
-                        setState(() {
-                          selectedPayment = payment;
-                        });
-                      },
-                    )),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Colors.grey[400]!),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: const Text("Cancel", style: TextStyle(fontSize: 13)),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: GradientButton(
-                          text: "Confirm",
-                          onPressed: () {
-                          if (selectedDate != null && selectedSlot != null && selectedPayment != null) {
-                            // Mark slot as booked
-                            String dateKey = selectedDate!.toIso8601String().split('T')[0];
-                            bookedSlots.putIfAbsent(ground['name'], () => {});
-                            bookedSlots[ground['name']]!.putIfAbsent(dateKey, () => []);
-                            bookedSlots[ground['name']]![dateKey]!.add(selectedSlot!);
-                            
-                            // Add to bookedGrounds list with date
-                            GlobalData.bookedGrounds.add({
-                              'ground': ground,
-                              'date': selectedDate!.toLocal().toString().split(' ')[0],
-                              'slot': selectedSlot,
-                              'payment': selectedPayment,
-                            });
-
-                            // Show success message
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        "Booking confirmed!",
-                                        style: const TextStyle(color: Colors.white),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                backgroundColor: AppTheme.successColor,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                            Navigator.of(context).pop();
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.warning, color: Colors.white, size: 20),
-                                    const SizedBox(width: 8),
-                                    const Expanded(
-                                      child: Text(
-                                        "Please select all options",
-                                        style: TextStyle(color: Colors.white),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                backgroundColor: AppTheme.warningColor,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        },
-                          
-                          height: 44,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          textStyle: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (_) => _BookingDialog(ground: ground, outerContext: outerContext),
     );
   }
 
@@ -415,9 +216,27 @@ class _CategoriesState extends State<Categories> {
     final colorScheme = theme.colorScheme;
     String selectedCategory = categories[selectedIndex]['name'];
 
-    List<Map<String, dynamic>> filteredSports = selectedCategory == "ALL"
-        ? sports
-        : sports.where((item) => item['category'] == selectedCategory).toList();
+    // Sirf Firestore grounds show karo
+    final firestoreFiltered = selectedCategory == 'ALL'
+        ? _firestoreGrounds
+        : _firestoreGrounds.where((g) => g['category'] == selectedCategory).toList();
+
+    final List<Map<String, dynamic>> filteredSports = firestoreFiltered.map((g) {
+      final imageUrls = (g['imageUrls'] as List?)?.cast<String>() ?? [];
+      return {
+        'name': g['name'] ?? '',
+        'category': g['category'] ?? '',
+        'location': g['location'] ?? '',
+        'imageUrls': imageUrls,
+        'isFirestore': true,
+        'id': g['id'],
+        'managerId': g['managerId'] ?? '',
+        'latitude': g['latitude'],
+        'longitude': g['longitude'],
+        'dayPrice': g['dayPrice'],
+        'nightPrice': g['nightPrice'],
+      };
+    }).toList();
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -434,7 +253,19 @@ class _CategoriesState extends State<Categories> {
               onPressed: () {
                 showSearch(
                   context: context,
-                  delegate: GroundSearchDelegate(sports: sports),
+                  delegate: GroundSearchDelegate(
+                    sports: _firestoreGrounds.map((g) {
+                      final imageUrls = (g['imageUrls'] as List?)?.cast<String>() ?? [];
+                      return {
+                        'name': g['name'] ?? '',
+                        'category': g['category'] ?? '',
+                        'imageUrls': imageUrls,
+                        'isFirestore': true,
+                        'id': g['id'],
+                        'managerId': g['managerId'] ?? '',
+                      };
+                    }).toList(),
+                  ),
                 );
               },
               icon: const Icon(Icons.search_rounded, color: Colors.white),
@@ -533,135 +364,248 @@ class _CategoriesState extends State<Categories> {
             ),
 
             // 🔹 Grid of Filtered Grounds
-            GridView.builder(
+            if (_isLoadingGrounds)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_fetchError != null)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Center(
+                  child: Column(
+                    children: [
+                      const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.red),
+                      const SizedBox(height: 12),
+                      const Text('Failed to load venues', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Text(
+                        _fetchError!,
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _isLoadingGrounds = true;
+                            _fetchError = null;
+                          });
+                          _groundsSub?.cancel();
+                          _listenToGrounds();
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (filteredSports.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.sports_outlined, size: 56, color: colorScheme.onSurfaceVariant),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No venues found',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Register a ground as manager to see it here',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+            ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 200, // Responsive: adjusts columns based on screen width
-                mainAxisExtent: 270, // Fixed height for each card to ensure content fits
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-              ),
               itemCount: filteredSports.length,
               itemBuilder: (context, index) {
                 final ground = filteredSports[index];
-                final isFavourite = GlobalData.favouriteGrounds.contains(ground);
+                final groundId = ground['id'] ?? ground['name'];
+                final isFavourite = _favouriteIds.contains(groundId as String? ?? '');
 
                 return ModernCard(
-                  margin: const EdgeInsets.all(6),
+                  margin: const EdgeInsets.only(bottom: 12),
                   padding: EdgeInsets.zero,
                   color: colorScheme.surface,
                   elevation: 3,
                   child: Column(
-                    mainAxisSize: MainAxisSize.max,
                     children: [
+                      // Image with overlays
                       SizedBox(
-                        height: 140,
+                        height: 160,
                         child: Stack(
+                          fit: StackFit.expand,
                           children: [
                             ClipRRect(
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                              child: Image(
-                                image: ground['image'],
-                                width: double.infinity,
-                                height: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(20)),
+                              child: _buildFirestoreImage(ground),
                             ),
-                            // Gradient overlay for better text visibility
+                            // Gradient overlay
                             Container(
                               decoration: BoxDecoration(
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(20)),
                                 gradient: LinearGradient(
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                   colors: [
                                     Colors.transparent,
-                                    Colors.black.withValues(alpha: 0.3),
+                                    Colors.black.withValues(alpha: 0.35),
                                   ],
                                 ),
                               ),
                             ),
+                            // Favourite button
                             Positioned(
-                              right: 8,
-                              top: 8,
+                              right: 10,
+                              top: 10,
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.9),
                                   shape: BoxShape.circle,
                                 ),
                                 child: IconButton(
+                                  padding: const EdgeInsets.all(6),
+                                  constraints: const BoxConstraints(),
                                   icon: Icon(
-                                    isFavourite ? Icons.favorite : Icons.favorite_border,
-                                    color: isFavourite ? Colors.red : Colors.grey[600],
+                                    isFavourite
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: isFavourite
+                                        ? Colors.red
+                                        : Colors.grey[600],
                                     size: 20,
                                   ),
-                                  onPressed: () {
-                                    setState(() {
-                                      if (isFavourite) {
-                                        GlobalData.favouriteGrounds.remove(ground);
-                                      } else {
-                                        GlobalData.favouriteGrounds.add(ground);
-                                      }
-                                    });
-                                  },
+                                  onPressed: () => _toggleFavourite(ground),
                                 ),
                               ),
                             ),
                             // Category badge
                             Positioned(
-                              left: 8,
-                              bottom: 8,
+                              left: 10,
+                              bottom: 10,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withValues(alpha: 0.9),
+                                  color: AppTheme.primaryColor
+                                      .withValues(alpha: 0.9),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  ground['category'],
+                                  ground['category'] ?? '',
                                   style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600),
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                ground['name'],
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              GradientButton(
-                                text: "Book Now",
-                                onPressed: () => _showBookingDialog(ground),
-                                height: 40,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                textStyle: const TextStyle(
+                      // Details
+                      Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Name + fav row
+                            Text(
+                              ground['name'] ?? '',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8),
+                            // Location + price row
+                            Row(
+                              children: [
+                                if ((ground['location'] ?? '').isNotEmpty) ...[
+                                  GestureDetector(
+                                    onTap: () =>
+                                        _openLocationOnMap(context, ground),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primaryColor
+                                            .withValues(alpha: 0.1),
+                                        borderRadius:
+                                            BorderRadius.circular(8),
+                                        border: Border.all(
+                                            color: AppTheme.primaryColor
+                                                .withValues(alpha: 0.3)),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.location_on_rounded,
+                                              size: 12,
+                                              color: AppTheme.primaryColor),
+                                          SizedBox(width: 4),
+                                          Text('View Location',
+                                              style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: AppTheme.primaryColor,
+                                                  fontWeight:
+                                                      FontWeight.w600)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                // Price chips
+                                if (ground['dayPrice'] != null)
+                                  _PriceChip(
+                                    icon: Icons.wb_sunny_rounded,
+                                    label: 'PKR ${ground['dayPrice']}',
+                                    color: const Color(0xFFFF9500),
+                                  ),
+                                if (ground['dayPrice'] != null &&
+                                    ground['nightPrice'] != null)
+                                  const SizedBox(width: 6),
+                                if (ground['nightPrice'] != null)
+                                  _PriceChip(
+                                    icon: Icons.nights_stay_rounded,
+                                    label: 'PKR ${ground['nightPrice']}',
+                                    color: const Color(0xFF1565C0),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            // Book Now button
+                            GradientButton(
+                              text: 'Book Now',
+                              icon: Icons.book_online_rounded,
+                              width: double.infinity,
+                              height: 44,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 10),
+                              textStyle: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold),
+                              onPressed: () => _showBookingDialog(ground),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -674,6 +618,504 @@ class _CategoriesState extends State<Categories> {
         ),
       ),
       
+    );
+  }
+}
+
+// ── Booking Dialog (Firestore-backed slot check) ──────────
+class _BookingDialog extends StatefulWidget {
+  final Map<String, dynamic> ground;
+  final BuildContext outerContext;
+  const _BookingDialog({required this.ground, required this.outerContext});
+  @override
+  State<_BookingDialog> createState() => _BookingDialogState();
+}
+
+class _BookingDialogState extends State<_BookingDialog> {
+  DateTime? _date;
+  String? _slot;
+  String? _payment;
+  List<String> _bookedSlots = [];
+  bool _loadingSlots = false;
+  final List<String> _payments = ['JazzCash', 'EasyPaisa'];
+
+  List<String> _getSlots() {
+    final cat = widget.ground['category'] ?? '';
+    if (cat == 'Cricket') return ['9am to 2pm', '2pm to 6pm', 'Full-day'];
+    final slots = <String>[];
+    for (int i = 9; i < 24; i++) {
+      final start = i <= 12 ? '${i}am' : '${i - 12}pm';
+      int e = i + 1;
+      String end = e <= 12 ? '${e}am' : '${e - 12}pm';
+      if (e == 12) end = '12pm';
+      if (e == 24) end = '12am';
+      slots.add('$start-$end');
+    }
+    return slots;
+  }
+
+  Future<void> _fetchBooked(String dateKey) async {
+    setState(() { _loadingSlots = true; _bookedSlots = []; });
+    final gid = widget.ground['id'] as String? ?? '';
+    if (gid.isNotEmpty) {
+      final slots = await BookingService.getBookedSlots(gid, dateKey);
+      if (mounted) setState(() => _bookedSlots = slots);
+    }
+    if (mounted) setState(() => _loadingSlots = false);
+  }
+
+  bool _isDisabled(String slot) {
+    final cat = widget.ground['category'] ?? '';
+    if (_bookedSlots.contains(slot)) return true;
+    if (cat == 'Cricket') {
+      if (slot == 'Full-day') {
+        return _bookedSlots.contains('9am to 2pm') ||
+            _bookedSlots.contains('2pm to 6pm') ||
+            _slot == '9am to 2pm' || _slot == '2pm to 6pm';
+      } else {
+        return _bookedSlots.contains('Full-day') || _slot == 'Full-day';
+      }
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dk = _date?.toIso8601String().split('T')[0];
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      contentPadding: const EdgeInsets.all(20),
+      title: Row(children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(12)),
+          child: const Icon(Icons.sports_outlined, color: Colors.white, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text('Book ${widget.ground['name'] ?? 'Venue'}',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis),
+        ),
+      ]),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.85,
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+        ),
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            // Date
+            GradientButton(
+              text: dk ?? 'Select Date',
+              icon: Icons.calendar_today,
+              width: double.infinity,
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              textStyle: const TextStyle(
+                  color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime.now().add(const Duration(days: 30)),
+                );
+                if (picked != null) {
+                  setState(() { _date = picked; _slot = null; });
+                  await _fetchBooked(picked.toIso8601String().split('T')[0]);
+                }
+              },
+            ),
+            // Slots
+            if (_date != null) ...[
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Select Time Slot:',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primaryColor)),
+              ),
+              if (_loadingSlots)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                ..._getSlots().map((slot) {
+                  final disabled = _isDisabled(slot);
+                  final booked = _bookedSlots.contains(slot);
+                  final label = booked
+                      ? '$slot (Booked)'
+                      : disabled
+                          ? '$slot (Unavailable)'
+                          : slot;
+                  return ListTile(
+                    dense: true,
+                    leading: Radio<String>(
+                      value: slot,
+                      groupValue: _slot,
+                      onChanged: disabled ? null : (v) => setState(() => _slot = v),
+                    ),
+                    title: Text(label,
+                        style: TextStyle(
+                            color: disabled ? Colors.grey : null,
+                            fontSize: 13)),
+                    onTap: disabled ? null : () => setState(() => _slot = slot),
+                  );
+                }),
+            ],
+            // Payment
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Select Payment Method:',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.primaryColor)),
+            ),
+            ..._payments.map((p) => ListTile(
+                  dense: true,
+                  leading: Radio<String>(
+                    value: p,
+                    groupValue: _payment,
+                    onChanged: (v) => setState(() => _payment = v),
+                  ),
+                  title: Text(p),
+                  onTap: () => setState(() => _payment = p),
+                )),
+          ]),
+        ),
+      ),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.grey[400]!),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: const Text('Cancel', style: TextStyle(fontSize: 13)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: GradientButton(
+                text: 'Confirm',
+                height: 44,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                textStyle: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold),
+                onPressed: () {
+                  if (_date == null || _slot == null || _payment == null) {
+                    ScaffoldMessenger.of(widget.outerContext).showSnackBar(
+                      SnackBar(
+                        content: const Text('Please select all options'),
+                        backgroundColor: AppTheme.warningColor,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    );
+                    return;
+                  }
+                  final dateKey = _date!.toIso8601String().split('T')[0];
+                  final user = FirebaseAuth.instance.currentUser;
+                  final g = widget.ground;
+
+                  int? bookingPrice;
+                  final s = _slot!.toLowerCase();
+                  int h = 9;
+                  if (s.startsWith('2pm')) h = 14;
+                  else if (!s.startsWith('full')) {
+                    final p = s.split(RegExp(r'[-\s]')).first.trim();
+                    if (p.endsWith('am')) h = int.tryParse(p.replaceAll('am', '')) ?? 9;
+                    else if (p.endsWith('pm')) {
+                      final x = int.tryParse(p.replaceAll('pm', '')) ?? 12;
+                      h = x == 12 ? 12 : x + 12;
+                    }
+                  }
+                  final isDay = h >= 6 && h < 18;
+                  if (isDay && g['dayPrice'] != null) bookingPrice = (g['dayPrice'] as num).toInt();
+                  else if (!isDay && g['nightPrice'] != null) bookingPrice = (g['nightPrice'] as num).toInt();
+
+                  BookingService.createBooking(
+                    groundId: g['id'] ?? '',
+                    groundName: g['name'] ?? '',
+                    groundCategory: g['category'] ?? '',
+                    managerId: g['managerId'] ?? '',
+                    userId: user?.uid ?? '',
+                    userEmail: user?.email ?? '',
+                    userName: user?.displayName ?? user?.email ?? '',
+                    date: dateKey,
+                    slot: _slot!,
+                    payment: _payment!,
+                    imageUrls: (g['imageUrls'] as List?)?.cast<String>() ?? [],
+                    price: bookingPrice,
+                  );
+
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(widget.outerContext).showSnackBar(SnackBar(
+                    content: const Text('Booking confirmed!'),
+                    backgroundColor: AppTheme.successColor,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    duration: const Duration(seconds: 2),
+                  ));
+                },
+              ),
+            ),
+          ]),
+        ),
+      ],
+    );
+  }
+}
+
+// Price chip widget
+class _PriceChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _PriceChip({required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 10, color: color),
+        const SizedBox(width: 3),
+        Text(label, style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.w600)),
+      ]),
+    );
+  }
+}
+
+// Location Bottom Sheet
+class _LocationBottomSheet extends StatelessWidget {
+  final String groundName;
+  final String location;
+  final double? latitude;
+  final double? longitude;
+
+  const _LocationBottomSheet({
+    required this.groundName,
+    required this.location,
+    this.latitude,
+    this.longitude,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final hasCoords = latitude != null && longitude != null;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Container(
+            width: 40, height: 4,
+            decoration: BoxDecoration(
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(groundName,
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Text(location,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant),
+                    maxLines: 3),
+              ]),
+            ),
+          ]),
+          const SizedBox(height: 20),
+
+          // Map preview (if coords available)
+          if (hasCoords) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                height: 200,
+                child: _MapPreview(latitude: latitude!, longitude: longitude!),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Open in map button
+          GradientButton(
+            text: hasCoords ? 'View on Map' : 'Location Address',
+            icon: Icons.map_rounded,
+            width: double.infinity,
+            height: 50,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            textStyle: const TextStyle(
+                color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+            onPressed: hasCoords
+                ? () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => _FullMapScreen(
+                          groundName: groundName,
+                          latitude: latitude!,
+                          longitude: longitude!,
+                          location: location,
+                        ),
+                      ),
+                    );
+                  }
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Small map preview widget
+class _MapPreview extends StatelessWidget {
+  final double latitude;
+  final double longitude;
+  const _MapPreview({required this.latitude, required this.longitude});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        flutter_map.FlutterMap(
+          options: flutter_map.MapOptions(
+            initialCenter: latlong2.LatLng(latitude, longitude),
+            initialZoom: 15,
+            interactionOptions: const flutter_map.InteractionOptions(
+              flags: flutter_map.InteractiveFlag.none,
+            ),
+          ),
+          children: [
+            flutter_map.TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.example.f_y_p',
+            ),
+            flutter_map.MarkerLayer(markers: [
+              flutter_map.Marker(
+                point: latlong2.LatLng(latitude, longitude),
+                width: 40, height: 40,
+                child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
+              ),
+            ]),
+          ],
+        ),
+        // Overlay to prevent interaction
+        Positioned.fill(child: Container(color: Colors.transparent)),
+      ],
+    );
+  }
+}
+
+// Full screen map
+class _FullMapScreen extends StatelessWidget {
+  final String groundName;
+  final double latitude;
+  final double longitude;
+  final String location;
+
+  const _FullMapScreen({
+    required this.groundName,
+    required this.latitude,
+    required this.longitude,
+    required this.location,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: ModernAppBar(title: groundName),
+      body: Stack(
+        children: [
+          flutter_map.FlutterMap(
+            options: flutter_map.MapOptions(
+              initialCenter: latlong2.LatLng(latitude, longitude),
+              initialZoom: 15,
+            ),
+            children: [
+              flutter_map.TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.f_y_p',
+              ),
+              flutter_map.MarkerLayer(markers: [
+                flutter_map.Marker(
+                  point: latlong2.LatLng(latitude, longitude),
+                  width: 48, height: 48,
+                  child: const Icon(Icons.location_pin, color: Colors.red, size: 48),
+                ),
+              ]),
+            ],
+          ),
+          // Bottom info card
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 12)],
+              ),
+              child: Row(children: [
+                const Icon(Icons.location_on_rounded, color: AppTheme.primaryColor),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(location,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                ),
+              ]),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -774,7 +1216,9 @@ class GroundSearchDelegate extends SearchDelegate<Map<String, dynamic>?> {
       itemCount: filteredSports.length,
       itemBuilder: (context, index) {
         final ground = filteredSports[index];
-        final isFavourite = GlobalData.favouriteGrounds.contains(ground);
+        final groundId = ground['id'] ?? ground['name'];
+        final isFavourite = GlobalData.favouriteGrounds
+            .any((f) => (f['id'] ?? f['name']) == groundId);
 
         return ModernCard(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -784,10 +1228,16 @@ class GroundSearchDelegate extends SearchDelegate<Map<String, dynamic>?> {
               height: 56,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                image: DecorationImage(
-                  image: ground['image'],
-                  fit: BoxFit.cover,
-                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: (() {
+                  final urls = (ground['imageUrls'] as List?)?.cast<String>() ?? [];
+                  return urls.isNotEmpty
+                      ? Image.network(urls.first, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.sports))
+                      : const Icon(Icons.sports);
+                })(),
               ),
             ),
             title: Text(
@@ -804,10 +1254,25 @@ class GroundSearchDelegate extends SearchDelegate<Map<String, dynamic>?> {
                     color: isFavourite ? Colors.red : Colors.grey,
                   ),
                   onPressed: () {
+                    final uid = FirebaseAuth.instance.currentUser?.uid;
+                    if (uid == null) return;
+                    final gId = groundId as String? ?? '';
+                    if (gId.isEmpty) return;
+                    final ref = FirebaseFirestore.instance
+                        .collection('users').doc(uid)
+                        .collection('favourites').doc(gId);
                     if (isFavourite) {
-                      GlobalData.favouriteGrounds.remove(ground);
+                      ref.delete();
                     } else {
-                      GlobalData.favouriteGrounds.add(ground);
+                      ref.set({
+                        'id': gId,
+                        'name': ground['name'] ?? '',
+                        'category': ground['category'] ?? '',
+                        'location': ground['location'] ?? '',
+                        'imageUrls': ground['imageUrls'] ?? [],
+                        'managerId': ground['managerId'] ?? '',
+                        'savedAt': FieldValue.serverTimestamp(),
+                      });
                     }
                   },
                 ),

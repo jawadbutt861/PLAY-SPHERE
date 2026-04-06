@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:f_y_p/screens/user%20pages/booking/booking.dart';
 import 'package:f_y_p/screens/user%20pages/tournament/tournament.dart';
 import 'package:f_y_p/screens/user%20pages/user%20home/home.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../main.dart';
+import '../../services/notification_service.dart';
 
 class UserMain extends StatefulWidget {
   const UserMain({super.key});
@@ -13,6 +16,9 @@ class UserMain extends StatefulWidget {
 
 class _UserMainState extends State<UserMain> with TickerProviderStateMixin {
   int index = 0;
+  int _unreadCount = 0;
+  StreamSubscription? _notifSub;
+  final String? _uid = FirebaseAuth.instance.currentUser?.uid;
   late AnimationController _animationController;
   late AnimationController _navAnimationController;
 
@@ -54,14 +60,20 @@ class _UserMainState extends State<UserMain> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-
     _animationController.forward();
+
+    if (_uid != null) {
+      _notifSub = NotificationService.getUserUnreadCount(_uid).listen((c) {
+        if (mounted) setState(() => _unreadCount = c);
+      });
+    }
   }
 
   @override
   void dispose() {
     _animationController.dispose();
     _navAnimationController.dispose();
+    _notifSub?.cancel();
     super.dispose();
   }
 
@@ -157,24 +169,35 @@ class _UserMainState extends State<UserMain> with TickerProviderStateMixin {
                           Navigator.pushNamed(context, '/Notifications');
                         },
                         icon: Stack(
+                          clipBehavior: Clip.none,
                           children: [
                             const Icon(
                               Icons.notifications_outlined,
                               color: Colors.white,
                               size: 22,
                             ),
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.errorColor,
-                                  borderRadius: BorderRadius.circular(4),
+                            if (_unreadCount > 0)
+                              Positioned(
+                                right: -4,
+                                top: -4,
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                      minWidth: 16, minHeight: 16),
+                                  child: Text(
+                                    '$_unreadCount',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold),
+                                    textAlign: TextAlign.center,
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),

@@ -18,25 +18,53 @@ import "package:f_y_p/screens/user%20pages/user_main.dart";
 import "package:f_y_p/screens/user%20signup/user_signup.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
+import "package:flutter/foundation.dart";
+import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'services/booking_service.dart';
 
-void main() async{
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Expired bookings auto-complete on startup
+  await BookingService.autoCompleteExpiredBookings();
+
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  Timer? _autoCompleteTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Har 30 minute mein expired bookings check karo
+    _autoCompleteTimer = Timer.periodic(
+      const Duration(minutes: 30),
+      (_) => BookingService.autoCompleteExpiredBookings(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _autoCompleteTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
