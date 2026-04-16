@@ -1,4 +1,6 @@
 
+// ignore_for_file: unnecessary_import
+
 import "package:f_y_p/screens/manager%20login/manager_login.dart";
 import "package:f_y_p/screens/user%20login/user_login.dart";
 import "package:f_y_p/screens/manager%20home/manager_home.dart";
@@ -8,6 +10,12 @@ import "package:f_y_p/screens/splash/splash_screen.dart";
 import "package:f_y_p/screens/user%20pages/booking/booking.dart";
 import "package:f_y_p/screens/user%20pages/categories/categories.dart";
 import "package:f_y_p/screens/user%20pages/notifications.dart";
+import 'services/crashlytics_service.dart';
+import "package:f_y_p/screens/email_verification/email_verification_screen.dart";
+import "package:f_y_p/screens/user%20pages/search/search_filter_screen.dart";
+import "package:f_y_p/screens/legal/legal_screen.dart";
+import 'package:provider/provider.dart';
+import 'providers/app_provider.dart';
 import "package:f_y_p/screens/user%20pages/tournament/tournament%20form/tournament_form.dart";
 import "package:f_y_p/screens/user%20pages/user%20home/booking%20history/booking_history.dart";
 import "package:f_y_p/screens/user%20pages/user%20home/calender/calender.dart";
@@ -21,6 +29,7 @@ import "package:flutter/services.dart";
 import "package:flutter/foundation.dart";
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'services/booking_service.dart';
 
@@ -34,6 +43,15 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Firestore offline persistence enable karo
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+  );
+
+  // Crashlytics init (errors catch karo)
+  await CrashlyticsService.init();
 
   // Expired bookings auto-complete on startup
   await BookingService.autoCompleteExpiredBookings();
@@ -68,7 +86,11 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppProvider()),
+      ],
+      child: MaterialApp(
       title: 'PlaySphere',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
@@ -82,6 +104,7 @@ class _MyAppState extends State<MyApp> {
         '/UserSignUp' : (context) => const UserSignup(),
         '/UserLogIn' : (context) => const UserLogin(),
         '/ManagerLogIn' : (context) => const ManagerLogin(),
+        '/EmailVerification': (context) => const EmailVerificationScreen(),
         '/UserMain' : (context) => const UserMain(),
         '/ManagerHome' : (context) => const Managerhome(),
         '/Categories' : (context) => const Categories(),
@@ -93,7 +116,11 @@ class _MyAppState extends State<MyApp> {
         '/TournamentForm' : (context) => const TournamentForm(),
         '/Profile' : (context) => const Profile(),
         '/Notifications' : (context) => const Notifications(),
+        '/Search': (context) => const SearchFilterScreen(),
+        '/Terms': (context) => const LegalScreen(type: LegalType.terms),
+        '/Privacy': (context) => const LegalScreen(type: LegalType.privacy),
       },
+      ),
     );
   }
 }

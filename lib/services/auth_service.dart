@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -25,10 +26,10 @@ class AuthService {
       return userCredential;
     } on FirebaseAuthException catch (e) {
       String message = _getErrorMessage(e.code);
-      _showErrorSnackBar(context, message);
+      if (context.mounted) _showErrorSnackBar(context, message);
       return null;
     } catch (e) {
-      _showErrorSnackBar(context, 'An unexpected error occurred');
+      if (context.mounted) _showErrorSnackBar(context, 'An unexpected error occurred');
       return null;
     }
   }
@@ -48,10 +49,10 @@ class AuthService {
       return userCredential;
     } on FirebaseAuthException catch (e) {
       String message = _getErrorMessage(e.code);
-      _showErrorSnackBar(context, message);
+      if (context.mounted) _showErrorSnackBar(context, message);
       return null;
     } catch (e) {
-      _showErrorSnackBar(context, 'An unexpected error occurred');
+      if (context.mounted) _showErrorSnackBar(context, 'An unexpected error occurred');
       return null;
     }
   }
@@ -72,14 +73,14 @@ class AuthService {
   }) async {
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
-      _showSuccessSnackBar(context, 'Password reset email sent! Check your inbox.');
+      if (context.mounted) _showSuccessSnackBar(context, 'Password reset email sent! Check your inbox.');
       return true;
     } on FirebaseAuthException catch (e) {
       String message = _getErrorMessage(e.code);
-      _showErrorSnackBar(context, message);
+      if (context.mounted) _showErrorSnackBar(context, message);
       return false;
     } catch (e) {
-      _showErrorSnackBar(context, 'Failed to send reset email');
+      if (context.mounted) _showErrorSnackBar(context, 'Failed to send reset email');
       return false;
     }
   }
@@ -109,15 +110,57 @@ class AuthService {
       return true;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
-        _showErrorSnackBar(context, 'Please sign in again to delete your account');
+        if (context.mounted) _showErrorSnackBar(context, 'Please sign in again to delete your account');
       } else {
-        _showErrorSnackBar(context, 'Failed to delete account');
+        if (context.mounted) _showErrorSnackBar(context, 'Failed to delete account');
       }
       return false;
     } catch (e) {
-      _showErrorSnackBar(context, 'An error occurred');
+      if (context.mounted) _showErrorSnackBar(context, 'An error occurred');
       return false;
     }
+  }
+
+  // ─── Google Sign-In ──────────────────────────────────────
+
+  /// Google se sign in karo — user aur manager dono ke liye
+  Future<UserCredential?> signInWithGoogle() async {
+    try {
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return null; // user ne cancel kiya
+
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      return await _auth.signInWithCredential(credential);
+    } catch (e) {
+      debugPrint('Google sign-in error: $e');
+      return null;
+    }
+  }
+
+  /// Google sign out
+  Future<void> signOutGoogle() async {
+    await GoogleSignIn().signOut();
+  }
+
+  // ─── Email Verification ───────────────────────────────────
+
+  /// Verification email bhejo
+  Future<void> sendEmailVerification() async {
+    try {
+      await currentUser?.sendEmailVerification();
+    } catch (e) {
+      debugPrint('sendEmailVerification error: $e');
+    }
+  }
+
+  /// Check karo email verified hai ya nahi (reload karke)
+  Future<bool> isEmailVerified() async {
+    await currentUser?.reload();
+    return _auth.currentUser?.emailVerified ?? false;
   }
 
   // Get error message from Firebase error code

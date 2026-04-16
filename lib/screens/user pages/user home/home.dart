@@ -103,6 +103,8 @@ class _TopGroundsRowState extends State<TopGroundsRow> {
   Widget _groundCard(Map<String, dynamic> g, ColorScheme colorScheme) {
     final imageUrls = (g['imageUrls'] as List?)?.cast<String>() ?? [];
     final bookingCount = g['bookingCount'] as int? ?? 0;
+    final rating = (g['avgRating'] as num?)?.toDouble() ?? 0;
+    final reviewCount = (g['reviewCount'] as num?)?.toInt() ?? 0;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -178,24 +180,53 @@ class _TopGroundsRowState extends State<TopGroundsRow> {
                       ],
                     ),
                   ),
-                  // Booking count badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.bookmark_rounded,
-                          size: 12, color: Colors.white),
-                      const SizedBox(width: 4),
-                      Text('$bookingCount',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold)),
-                    ]),
+                  // Badges — rating + booking count
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      // Rating badge
+                      if (rating > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentColor.withValues(alpha: 0.92),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.star_rounded,
+                                size: 12, color: Colors.white),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${rating.toStringAsFixed(1)} ($reviewCount)',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ]),
+                        ),
+                      if (rating > 0) const SizedBox(height: 4),
+                      // Booking count badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.bookmark_rounded,
+                              size: 12, color: Colors.white),
+                          const SizedBox(width: 4),
+                          Text('$bookingCount',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold)),
+                        ]),
+                      ),
+                    ],
                   ),
                 ],
               ),

@@ -221,14 +221,14 @@ class _ManagerMyVenuesState extends State<ManagerMyVenues> {
       barrierDismissible: false,
       builder: (_) => _EditVenueDialog(ground: g),
     );
-    if (result == true && mounted) {
+    if (result == true && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text('Venue updated!'),
         backgroundColor: AppTheme.successColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ));
-    } else if (result == false && mounted) {
+    } else if (result == false && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text('Update failed, try again.'),
         backgroundColor: AppTheme.errorColor,

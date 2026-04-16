@@ -223,7 +223,7 @@ class _ProfileState extends State<Profile> {
                             await user.reauthenticateWithCredential(credential);
                             await user.updatePassword(newPasswordController.text);
 
-                            if (mounted) {
+                            if (context.mounted) {
                               oldPasswordController.dispose();
                               newPasswordController.dispose();
                               confirmPasswordController.dispose();
@@ -504,7 +504,7 @@ class _ProfileState extends State<Profile> {
               // Sign out from Firebase
               await _authService.signOut();
 
-              if (mounted) {
+              if (context.mounted) {
                 // Close loading dialog
                 Navigator.pop(context);
                 

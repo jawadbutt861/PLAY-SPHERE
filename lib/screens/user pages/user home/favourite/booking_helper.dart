@@ -144,10 +144,10 @@ class _BookingDialogState extends State<_BookingDialog> {
                   final disabled = _isDisabled(slot);
                   return ListTile(
                     dense: true,
-                    leading: Radio<String>(
-                      value: slot,
+                    leading: RadioGroup<String>(
                       groupValue: _slot,
-                      onChanged: disabled ? null : (v) => setState(() => _slot = v),
+                      onChanged: disabled ? (v) {} : (v) => setState(() => _slot = v),
+                      child: Radio<String>(value: slot),
                     ),
                     title: Text(_slotLabel(slot),
                         style: TextStyle(
@@ -169,10 +169,10 @@ class _BookingDialogState extends State<_BookingDialog> {
             ),
             ..._payments.map((p) => ListTile(
                   dense: true,
-                  leading: Radio<String>(
-                    value: p,
+                  leading: RadioGroup<String>(
                     groupValue: _payment,
                     onChanged: (v) => setState(() => _payment = v),
+                    child: Radio<String>(value: p),
                   ),
                   title: Text(p, style: const TextStyle(fontSize: 13)),
                   onTap: () => setState(() => _payment = p),
@@ -204,10 +204,10 @@ class _BookingDialogState extends State<_BookingDialog> {
             int? price;
             final s = _slot!.toLowerCase();
             int h = 9;
-            if (s.startsWith('2pm')) h = 14;
+            if (s.startsWith('2pm')) { h = 14; }
             else if (!s.startsWith('full')) {
               final p = s.split(RegExp(r'[-\s]')).first.trim();
-              if (p.endsWith('am')) h = int.tryParse(p.replaceAll('am', '')) ?? 9;
+              if (p.endsWith('am')) { h = int.tryParse(p.replaceAll('am', '')) ?? 9; }
               else if (p.endsWith('pm')) {
                 final x = int.tryParse(p.replaceAll('pm', '')) ?? 12;
                 h = x == 12 ? 12 : x + 12;

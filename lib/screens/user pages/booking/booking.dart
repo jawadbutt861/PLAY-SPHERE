@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../main.dart';
 import '../../../services/booking_service.dart';
+import '../../../services/cancellation_service.dart';
 
 class Booked extends StatefulWidget {
   const Booked({super.key});
@@ -67,34 +68,93 @@ class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
     return map;
   }
   Future<void> _deleteBooking(Map<String, dynamic> booking) async {
+    final date = booking['date'] as String? ?? '';
+    final slot = booking['slot'] as String? ?? '';
+    final price = (booking['price'] as num?)?.toInt();
+    final policy = CancellationService.checkPolicy(date, slot);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.delete_outline_rounded, color: Colors.red),
+          Icon(Icons.cancel_outlined, color: Colors.red),
           SizedBox(width: 10),
-          Text('Remove Booking'),
+          Text('Cancel Booking'),
         ]),
-        content: const Text('Remove this booking from your list?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!policy.canCancel)
+              Text(policy.message,
+                  style: const TextStyle(color: Colors.red))
+            else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: policy.refundColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: policy.refundColor.withValues(alpha: 0.3)),
+                ),
+                child: Row(children: [
+                  Icon(Icons.info_outline_rounded,
+                      color: policy.refundColor, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(policy.refundLabel,
+                            style: TextStyle(
+                                color: policy.refundColor,
+                                fontWeight: FontWeight.bold)),
+                        Text(policy.message,
+                            style: const TextStyle(fontSize: 12)),
+                        if (price != null && policy.refundPercent > 0)
+                          Text(
+                            'Refund: Rs. ${((price * policy.refundPercent) / 100).round()}',
+                            style: TextStyle(
+                                color: policy.refundColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13),
+                          ),
+                      ],
+                    ),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 10),
+              const Text('Are you sure you want to cancel?'),
+            ],
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text('No', style: TextStyle(color: Colors.grey[600])),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red, foregroundColor: Colors.white),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove'),
-          ),
+          if (policy.canCancel)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red, foregroundColor: Colors.white),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Cancel Booking'),
+            ),
         ],
       ),
     );
+
     if (confirmed != true) return;
     final id = booking['id'] as String?;
     if (id != null && id.isNotEmpty) {
-      await BookingService.deleteBooking(id);
+      await CancellationService.cancelBooking(
+        bookingId: id,
+        date: date,
+        slot: slot,
+        paidPrice: price,
+      );
     }
   }
 
@@ -297,8 +357,8 @@ class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
                     ? const BorderRadius.vertical(top: Radius.circular(20))
                     : BorderRadius.circular(20),
                 onTap: () => setState(() {
-                  if (isExpanded) _expandedTournaments.remove(tid);
-                  else _expandedTournaments.add(tid);
+                  if (isExpanded) { _expandedTournaments.remove(tid); }
+                  else { _expandedTournaments.add(tid); }
                 }),
                 child: Container(
                   padding: const EdgeInsets.symmetric(

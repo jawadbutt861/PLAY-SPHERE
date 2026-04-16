@@ -4,8 +4,11 @@ import 'package:f_y_p/screens/user%20pages/tournament/tournament.dart';
 import 'package:f_y_p/screens/user%20pages/user%20home/home.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../../services/notification_service.dart';
+import '../../providers/app_provider.dart';
+import '../../services/reminder_service.dart';
 
 class UserMain extends StatefulWidget {
   const UserMain({super.key});
@@ -66,6 +69,9 @@ class _UserMainState extends State<UserMain> with TickerProviderStateMixin {
       _notifSub = NotificationService.getUserUnreadCount(_uid).listen((c) {
         if (mounted) setState(() => _unreadCount = c);
       });
+      // Provider init karo
+      context.read<AppProvider>().init(_uid);
+      ReminderService.startChecking(_uid);
     }
   }
 
@@ -74,6 +80,7 @@ class _UserMainState extends State<UserMain> with TickerProviderStateMixin {
     _animationController.dispose();
     _navAnimationController.dispose();
     _notifSub?.cancel();
+    ReminderService.stopChecking();
     super.dispose();
   }
 
@@ -150,6 +157,28 @@ class _UserMainState extends State<UserMain> with TickerProviderStateMixin {
                             'assets/images/logo.png',
                             fit: BoxFit.contain,
                           ),
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(width: 8),
+                    
+                    // Notifications Button
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: IconButton(
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/Search');
+                        },
+                        icon: const Icon(
+                          Icons.search_rounded,
+                          color: Colors.white,
+                          size: 22,
                         ),
                       ),
                     ),

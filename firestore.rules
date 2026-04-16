@@ -2,51 +2,117 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ─── Helper Functions ────────────────────────────────────
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+
+    function isValidString(field, minLen, maxLen) {
+      return field is string && field.size() >= minLen && field.size() <= maxLen;
+    }
+
+    // ─── Users ───────────────────────────────────────────────
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      // Sirf apna data read/write kar sako
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && isValidString(request.resource.data.fullName, 2, 100)
+        && isValidString(request.resource.data.email, 5, 200);
+      allow update: if isOwner(uid)
+        // uid aur email change nahi ho sakti
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email;
+      allow delete: if isOwner(uid);
 
       match /favourites/{groundId} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+        allow read, write: if isOwner(uid);
       }
     }
 
+    // ─── Grounds ─────────────────────────────────────────────
     match /grounds/{groundId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null
-        && request.auth.uid == resource.data.managerId;
+      // Koi bhi logged-in user read kar sakta hai
+      allow read: if isAuth();
+      // Sirf authenticated user create kar sakta hai (manager signup)
+      allow create: if isAuth()
+        && request.resource.data.managerId == request.auth.uid
+        && isValidString(request.resource.data.venueName, 2, 200)
+        && isValidString(request.resource.data.category, 2, 50);
+      // Sirf apna ground update/delete kar sakta hai manager
+      allow update: if isAuth()
+        && resource.data.managerId == request.auth.uid
+        // managerId change nahi ho sakti
+        && request.resource.data.managerId == resource.data.managerId;
+      allow delete: if isAuth()
+        && resource.data.managerId == request.auth.uid;
     }
 
+    // ─── Bookings ────────────────────────────────────────────
     match /bookings/{bookingId} {
-      // Read: apni booking (user ya manager) ya slot availability check
-      allow read: if request.auth != null;
-      // Create: logged in user
-      allow create: if request.auth != null;
-      // Update: booking owner (user ya manager) ya tournament creator update kar sakta hai
-      allow update: if request.auth != null
+      // User apni bookings dekh sakta hai, manager apni ground ki
+      allow read: if isAuth()
+        && (resource.data.userId == request.auth.uid
+            || resource.data.managerId == request.auth.uid);
+      // Slot availability check ke liye list query allow (userId/managerId filter se)
+      allow list: if isAuth();
+      // Logged-in user booking create kar sakta hai
+      allow create: if isAuth()
+        && request.resource.data.userId == request.auth.uid
+        && isValidString(request.resource.data.groundId, 1, 200)
+        && isValidString(request.resource.data.date, 1, 20)
+        && isValidString(request.resource.data.slot, 1, 50);
+      // Status update: booking owner ya manager kar sakta hai
+      allow update: if isAuth()
         && (resource.data.userId == request.auth.uid
             || resource.data.managerId == request.auth.uid
-            || resource.data.tournamentCreatorId == request.auth.uid);
-      // Delete: booking owner delete kar sakta hai (cancelled/completed)
-      allow delete: if request.auth != null
+            || resource.data.tournamentCreatorId == request.auth.uid)
+        // groundId, userId, managerId immutable hain
+        && request.resource.data.groundId == resource.data.groundId
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.managerId == resource.data.managerId;
+      // Sirf booking owner delete kar sakta hai
+      allow delete: if isAuth()
         && resource.data.userId == request.auth.uid;
     }
 
+    // ─── Notifications ───────────────────────────────────────
     match /notifications/{notifId} {
-      allow read, write: if request.auth != null;
+      // Sirf apni notifications read kar sako
+      allow read: if isAuth()
+        && (resource.data.userId == request.auth.uid
+            || resource.data.managerId == request.auth.uid);
+      // Create: authenticated user (service se create hoti hain)
+      allow create: if isAuth();
+      // Update: sirf apni notification (isRead mark karna)
+      allow update: if isAuth()
+        && (resource.data.userId == request.auth.uid
+            || resource.data.managerId == request.auth.uid);
+      // Delete: sirf apni notifications
+      allow delete: if isAuth()
+        && (resource.data.userId == request.auth.uid
+            || resource.data.managerId == request.auth.uid);
     }
 
+    // ─── Tournaments ─────────────────────────────────────────
     match /tournaments/{tournamentId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null
-        && request.auth.uid == resource.data.createdBy;
-      allow delete: if request.auth != null
-        && request.auth.uid == resource.data.createdBy;
+      allow read: if isAuth();
+      allow create: if isAuth()
+        && request.resource.data.createdBy == request.auth.uid
+        && isValidString(request.resource.data.name, 2, 200);
+      allow update: if isAuth()
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if isAuth()
+        && resource.data.createdBy == request.auth.uid;
     }
 
+    // ─── Test (dev only — production mein remove karo) ───────
     match /_test/{doc} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }

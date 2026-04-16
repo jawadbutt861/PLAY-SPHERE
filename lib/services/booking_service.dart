@@ -129,6 +129,15 @@ class BookingService {
     });
   }
 
+  /// Specific ground ki saari bookings (calendar ke liye)
+  static Stream<List<Map<String, dynamic>>> getGroundBookings(String groundId) {
+    return _db
+        .collection(_col)
+        .where('groundId', isEqualTo: groundId)
+        .snapshots()
+        .map((s) => s.docs.map((d) => {...d.data(), 'id': d.id}).toList());
+  }
+
   /// Aaj ki bookings for manager (confirmed + completed)
   static Stream<List<Map<String, dynamic>>> getTodayBookings(String managerId) {
     final today = DateTime.now();

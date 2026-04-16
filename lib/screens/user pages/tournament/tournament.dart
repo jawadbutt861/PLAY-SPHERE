@@ -968,7 +968,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                         decoration: BoxDecoration(
-                          color: selectedResult == 'team1' ? Colors.green.withOpacity(0.1) : null,
+                          color: selectedResult == 'team1' ? Colors.green.withValues(alpha: 0.1) : null,
                           border: Border.all(
                             color: selectedResult == 'team1' ? Colors.green : Colors.grey,
                             width: selectedResult == 'team1' ? 2 : 1,
@@ -1004,7 +1004,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                         decoration: BoxDecoration(
-                          color: selectedResult == 'team2' ? Colors.green.withOpacity(0.1) : null,
+                          color: selectedResult == 'team2' ? Colors.green.withValues(alpha: 0.1) : null,
                           border: Border.all(
                             color: selectedResult == 'team2' ? Colors.green : Colors.grey,
                             width: selectedResult == 'team2' ? 2 : 1,
@@ -1040,7 +1040,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                         decoration: BoxDecoration(
-                          color: selectedResult == 'draw' ? Colors.blue.withOpacity(0.1) : null,
+                          color: selectedResult == 'draw' ? Colors.blue.withValues(alpha: 0.1) : null,
                           border: Border.all(
                             color: selectedResult == 'draw' ? Colors.blue : Colors.grey,
                             width: selectedResult == 'draw' ? 2 : 1,
@@ -1076,7 +1076,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                         decoration: BoxDecoration(
-                          color: selectedResult == 'abandoned' ? Colors.grey.withOpacity(0.1) : null,
+                          color: selectedResult == 'abandoned' ? Colors.grey.withValues(alpha: 0.1) : null,
                           border: Border.all(
                             color: selectedResult == 'abandoned' ? Colors.grey : Colors.grey.shade400,
                             width: selectedResult == 'abandoned' ? 2 : 1,
@@ -1239,7 +1239,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.leaderboard_rounded, size: 80, color: colorScheme.onSurfaceVariant.withOpacity(0.3)),
+              Icon(Icons.leaderboard_rounded, size: 80, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3)),
               const SizedBox(height: 16),
               Text(
                 "No points data available yet",
@@ -1248,7 +1248,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
               const SizedBox(height: 8),
               Text(
                 "Complete matches to see standings",
-                style: TextStyle(fontSize: 14, color: colorScheme.onSurfaceVariant.withOpacity(0.7)),
+                style: TextStyle(fontSize: 14, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
               ),
             ],
           ),
@@ -1520,7 +1520,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.calendar_today_rounded, size: 80, color: colorScheme.onSurfaceVariant.withOpacity(0.3)),
+              Icon(Icons.calendar_today_rounded, size: 80, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3)),
               const SizedBox(height: 16),
               Text(
                 "No schedule available",
@@ -1607,7 +1607,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                           Text(
                             "$completedCount of $totalCount matches completed",
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontSize: 12,
                             ),
                           ),
@@ -1616,7 +1616,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                     ),
                     CircularProgressIndicator(
                       value: totalCount > 0 ? completedCount / totalCount : 0,
-                      backgroundColor: Colors.white.withOpacity(0.3),
+                      backgroundColor: Colors.white.withValues(alpha: 0.3),
                       valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                       strokeWidth: 3,
                     ),
@@ -1645,13 +1645,13 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     decoration: BoxDecoration(
                       color: isCompleted 
-                          ? Colors.green.withOpacity(0.05) 
+                          ? Colors.green.withValues(alpha: 0.05) 
                           : matchIndex.isEven 
                               ? colorScheme.surface 
                               : colorScheme.surfaceContainerHighest,
                       border: Border(
                         bottom: BorderSide(
-                          color: colorScheme.outlineVariant.withOpacity(0.3),
+                          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
                           width: 0.5,
                         ),
                       ),
@@ -1761,7 +1761,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                               decoration: BoxDecoration(
-                                color: _getMatchTypeColor(match['matchType'] ?? 'regular').withOpacity(0.1),
+                                color: _getMatchTypeColor(match['matchType'] ?? 'regular').withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
@@ -1822,3 +1822,4 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
     }
   }
 }
+

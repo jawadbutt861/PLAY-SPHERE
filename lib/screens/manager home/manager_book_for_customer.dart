@@ -111,18 +111,19 @@ class _ManagerBookForCustomerState extends State<ManagerBookForCustomer> {
     int? price;
     final s = _selectedSlot!.toLowerCase();
     int h = 9;
-    if (s.startsWith('2pm')) h = 14;
-    else if (!s.startsWith('full')) {
+    if (s.startsWith('2pm')) {
+      h = 14;
+    } else if (!s.startsWith('full')) {
       final p = s.split(RegExp(r'[-\s]')).first.trim();
-      if (p.endsWith('am')) h = int.tryParse(p.replaceAll('am', '')) ?? 9;
+      if (p.endsWith('am')) { h = int.tryParse(p.replaceAll('am', '')) ?? 9; }
       else if (p.endsWith('pm')) {
         final x = int.tryParse(p.replaceAll('pm', '')) ?? 12;
         h = x == 12 ? 12 : x + 12;
       }
     }
     final isDay = h >= 6 && h < 18;
-    if (isDay && g['dayPrice'] != null) price = (g['dayPrice'] as num).toInt();
-    else if (!isDay && g['nightPrice'] != null) price = (g['nightPrice'] as num).toInt();
+    if (isDay && g['dayPrice'] != null) { price = (g['dayPrice'] as num).toInt(); }
+    else if (!isDay && g['nightPrice'] != null) { price = (g['nightPrice'] as num).toInt(); }
 
     final id = await BookingService.createBooking(
       groundId: g['id'] ?? '',

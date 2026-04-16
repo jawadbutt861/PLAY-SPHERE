@@ -519,10 +519,12 @@ class _ManagerTournamentBookingsState extends State<ManagerTournamentBookings> {
     super.initState();
     if (_uid != null) {
       _sub = BookingService.getManagerBookings(_uid).listen((b) {
-        if (mounted) setState(() {
-          _bookings = b.where((x) => x['isTournament'] == true).toList();
-          _loading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _bookings = b.where((x) => x['isTournament'] == true).toList();
+            _loading = false;
+          });
+        }
       }, onError: (_) { if (mounted) setState(() => _loading = false); });
     } else {
       setState(() => _loading = false);
@@ -589,8 +591,8 @@ class _ManagerTournamentBookingsState extends State<ManagerTournamentBookings> {
                                 ? const BorderRadius.vertical(top: Radius.circular(20))
                                 : BorderRadius.circular(20),
                             onTap: () => setState(() {
-                              if (isExpanded) _expanded.remove(tid);
-                              else _expanded.add(tid);
+                              if (isExpanded) { _expanded.remove(tid); }
+                              else { _expanded.add(tid); }
                             }),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -790,10 +792,10 @@ class _ManagerAnalyticsState extends State<ManagerAnalytics> {
     if (g.isEmpty) return 0;
     final s = slot.toLowerCase();
     int h = 9;
-    if (s.startsWith('2pm')) h = 14;
+    if (s.startsWith('2pm')) { h = 14; }
     else if (!s.startsWith('full') && !s.startsWith('9am')) {
       final p = s.split(RegExp(r'[-\s]')).first.trim();
-      if (p.endsWith('am')) h = int.tryParse(p.replaceAll('am', '')) ?? 9;
+      if (p.endsWith('am')) { h = int.tryParse(p.replaceAll('am', '')) ?? 9; }
       else if (p.endsWith('pm')) { final x = int.tryParse(p.replaceAll('pm', '')) ?? 12; h = x == 12 ? 12 : x + 12; }
     }
     final isDay = h >= 6 && h < 18;

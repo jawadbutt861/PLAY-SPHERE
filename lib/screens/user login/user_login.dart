@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../main.dart';
 import '../../services/auth_service.dart';
+import '../../services/user_service.dart';
+import '../email_verification/email_verification_screen.dart';
 
 class UserLogin extends StatefulWidget {
   const UserLogin({super.key});
@@ -39,7 +41,37 @@ class _UserLoginState extends State<UserLogin> {
     setState(() => isLoading = false);
 
     if (userCredential != null && mounted) {
-      Navigator.pushReplacementNamed(context, "/UserMain");
+      // Email verified check karo
+      final verified = await _authService.isEmailVerified();
+      if (!mounted) return;
+      if (verified) {
+        Navigator.pushReplacementNamed(context, "/UserMain");
+      } else {
+        // Verification screen pe bhejo
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const EmailVerificationScreen()),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => isLoading = true);
+    final cred = await _authService.signInWithGoogle();
+    setState(() => isLoading = false);
+    if (cred != null && mounted) {
+      // Save user to Firestore if new
+      final user = cred.user;
+      if (user != null && cred.additionalUserInfo?.isNewUser == true) {
+        await UserService.saveUser(
+          uid: user.uid,
+          fullName: user.displayName ?? '',
+          email: user.email ?? '',
+          mobile: '',
+        );
+      }
+      if (mounted) Navigator.pushReplacementNamed(context, '/UserMain');
     }
   }
 
@@ -322,6 +354,32 @@ class _UserLoginState extends State<UserLogin> {
                                       ),
                                     ),
                                   ],
+                                ),
+
+                                SizedBox(height: size.height * 0.015),
+
+                                Row(children: [
+                                  const Expanded(child: Divider()),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    child: Text('OR', style: TextStyle(
+                                        color: colorScheme.onSurfaceVariant, fontSize: 12)),
+                                  ),
+                                  const Expanded(child: Divider()),
+                                ]),
+
+                                SizedBox(height: size.height * 0.015),
+
+                                OutlinedButton.icon(
+                                  onPressed: isLoading ? null : _handleGoogleSignIn,
+                                  icon: const Icon(Icons.g_mobiledata_rounded,
+                                      size: 26, color: Colors.red),
+                                  label: const Text('Continue with Google'),
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size(double.infinity, 50),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14)),
+                                  ),
                                 ),
                               ],
                             ),

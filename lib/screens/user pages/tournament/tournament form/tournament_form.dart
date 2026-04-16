@@ -411,6 +411,7 @@ class _TournamentFormState extends State<TournamentForm> {
     } else if (currentStep == 3) {
       // Slots step mein enter karte waqt Firestore se booked slots fetch karo
       await _fetchBookedSlotsForGrounds();
+      if (!mounted) return;
       bool allHaveSlots = selectedGrounds.every((g) {
         final name = g['name'];
         final picked = selectedSlotsPerGround[name] ?? [];
@@ -948,7 +949,7 @@ class _TournamentFormState extends State<TournamentForm> {
                               _buildLabel("Sport"),
                               const SizedBox(height: 4),
                               DropdownButtonFormField<String>(
-                                value: selectedSport,
+                                initialValue: selectedSport,
                                 style: const TextStyle(color: Colors.white),
                                 dropdownColor: const Color(0xFF132F4C),
                                 decoration: InputDecoration(
@@ -979,7 +980,7 @@ class _TournamentFormState extends State<TournamentForm> {
                               _buildLabel("Teams"),
                               const SizedBox(height: 4),
                               DropdownButtonFormField<String>(
-                                value: selectedTeam,
+                                initialValue: selectedTeam,
                                 style: const TextStyle(color: Colors.white),
                                 dropdownColor: const Color(0xFF132F4C),
                                 decoration: InputDecoration(
@@ -1007,7 +1008,7 @@ class _TournamentFormState extends State<TournamentForm> {
                               _buildLabel("Format"),
                               const SizedBox(height: 4),
                               DropdownButtonFormField<String>(
-                                value: selectedFormat,
+                                initialValue: selectedFormat,
                                 style: const TextStyle(color: Colors.white),
                                 dropdownColor: const Color(0xFF132F4C),
                                 decoration: InputDecoration(
@@ -1100,11 +1101,13 @@ class _TournamentFormState extends State<TournamentForm> {
                                 children: [
                                   ListTile(
                                     dense: true,
-                                    leading: Radio<String>(
-                                      value: "JazzCash",
+                                    leading: RadioGroup<String>(
                                       groupValue: selectedPayment,
                                       onChanged: (v) => setState(() => selectedPayment = v),
-                                      activeColor: const Color(0xFF00D9FF),
+                                      child: Radio<String>(
+                                        value: "JazzCash",
+                                        activeColor: const Color(0xFF00D9FF),
+                                      ),
                                     ),
                                     title: const Text("JazzCash", style: TextStyle(fontSize: 14)),
                                     subtitle: const Text("Mobile wallet payment", style: TextStyle(fontSize: 12)),
@@ -1113,11 +1116,13 @@ class _TournamentFormState extends State<TournamentForm> {
                                   const Divider(height: 1),
                                   ListTile(
                                     dense: true,
-                                    leading: Radio<String>(
-                                      value: "EasyPaisa",
+                                    leading: RadioGroup<String>(
                                       groupValue: selectedPayment,
                                       onChanged: (v) => setState(() => selectedPayment = v),
-                                      activeColor: const Color(0xFF00D9FF),
+                                      child: Radio<String>(
+                                        value: "EasyPaisa",
+                                        activeColor: const Color(0xFF00D9FF),
+                                      ),
                                     ),
                                     title: const Text("EasyPaisa", style: TextStyle(fontSize: 14)),
                                     subtitle: const Text("Mobile wallet payment", style: TextStyle(fontSize: 12)),

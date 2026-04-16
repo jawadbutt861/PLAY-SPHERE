@@ -755,10 +755,12 @@ class _BookingDialogState extends State<_BookingDialog> {
                           : slot;
                   return ListTile(
                     dense: true,
-                    leading: Radio<String>(
-                      value: slot,
+                    leading: RadioGroup<String>(
                       groupValue: _slot,
-                      onChanged: disabled ? null : (v) => setState(() => _slot = v),
+                      onChanged: disabled ? (v) {} : (v) => setState(() => _slot = v),
+                      child: Radio<String>(
+                        value: slot,
+                      ),
                     ),
                     title: Text(label,
                         style: TextStyle(
@@ -779,10 +781,10 @@ class _BookingDialogState extends State<_BookingDialog> {
             ),
             ..._payments.map((p) => ListTile(
                   dense: true,
-                  leading: Radio<String>(
-                    value: p,
+                  leading: RadioGroup<String>(
                     groupValue: _payment,
                     onChanged: (v) => setState(() => _payment = v),
+                    child: Radio<String>(value: p),
                   ),
                   title: Text(p),
                   onTap: () => setState(() => _payment = p),
@@ -836,18 +838,18 @@ class _BookingDialogState extends State<_BookingDialog> {
                   int? bookingPrice;
                   final s = _slot!.toLowerCase();
                   int h = 9;
-                  if (s.startsWith('2pm')) h = 14;
+                  if (s.startsWith('2pm')) { h = 14; }
                   else if (!s.startsWith('full')) {
                     final p = s.split(RegExp(r'[-\s]')).first.trim();
-                    if (p.endsWith('am')) h = int.tryParse(p.replaceAll('am', '')) ?? 9;
+                    if (p.endsWith('am')) { h = int.tryParse(p.replaceAll('am', '')) ?? 9; }
                     else if (p.endsWith('pm')) {
                       final x = int.tryParse(p.replaceAll('pm', '')) ?? 12;
                       h = x == 12 ? 12 : x + 12;
                     }
                   }
                   final isDay = h >= 6 && h < 18;
-                  if (isDay && g['dayPrice'] != null) bookingPrice = (g['dayPrice'] as num).toInt();
-                  else if (!isDay && g['nightPrice'] != null) bookingPrice = (g['nightPrice'] as num).toInt();
+                  if (isDay && g['dayPrice'] != null) { bookingPrice = (g['dayPrice'] as num).toInt(); }
+                  else if (!isDay && g['nightPrice'] != null) { bookingPrice = (g['nightPrice'] as num).toInt(); }
 
                   BookingService.createBooking(
                     groundId: g['id'] ?? '',
