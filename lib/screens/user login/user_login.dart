@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../main.dart';
 import '../../services/auth_service.dart';
-import '../../services/user_service.dart';
-import '../email_verification/email_verification_screen.dart';
 
 class UserLogin extends StatefulWidget {
   const UserLogin({super.key});
@@ -41,37 +39,16 @@ class _UserLoginState extends State<UserLogin> {
     setState(() => isLoading = false);
 
     if (userCredential != null && mounted) {
-      // Email verified check karo
-      final verified = await _authService.isEmailVerified();
-      if (!mounted) return;
-      if (verified) {
-        Navigator.pushReplacementNamed(context, "/UserMain");
-      } else {
-        // Verification screen pe bhejo
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const EmailVerificationScreen()),
-        );
-      }
+      Navigator.pushReplacementNamed(context, "/UserMain");
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
     setState(() => isLoading = true);
-    final cred = await _authService.signInWithGoogle();
+    final userCredential = await _authService.signInWithGoogle(context: context);
     setState(() => isLoading = false);
-    if (cred != null && mounted) {
-      // Save user to Firestore if new
-      final user = cred.user;
-      if (user != null && cred.additionalUserInfo?.isNewUser == true) {
-        await UserService.saveUser(
-          uid: user.uid,
-          fullName: user.displayName ?? '',
-          email: user.email ?? '',
-          mobile: '',
-        );
-      }
-      if (mounted) Navigator.pushReplacementNamed(context, '/UserMain');
+    if (userCredential != null && mounted) {
+      Navigator.pushReplacementNamed(context, "/UserMain");
     }
   }
 
@@ -324,6 +301,44 @@ class _UserLoginState extends State<UserLogin> {
                                 
                                 SizedBox(height: size.height * 0.02),
                                 
+                                // Divider
+                                Row(
+                                  children: [
+                                    Expanded(child: Divider(color: Colors.grey[300])),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      child: Text(
+                                        'OR',
+                                        style: TextStyle(
+                                          color: Colors.grey[500],
+                                          fontSize: size.width * 0.033,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(child: Divider(color: Colors.grey[300])),
+                                  ],
+                                ),
+
+                                SizedBox(height: size.height * 0.02),
+
+                                // Google Sign-In Button
+                                GradientButton(
+                                  text: 'Continue with Google',
+                                  onPressed: isLoading ? null : _handleGoogleSignIn,
+                                  width: double.infinity,
+                                  height: 56,
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                  textStyle: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: size.width * 0.042,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  icon: Icons.g_mobiledata,
+                                ),
+
+                                SizedBox(height: size.height * 0.02),
+                                
                                 Wrap(
                                   alignment: WrapAlignment.center,
                                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -354,32 +369,6 @@ class _UserLoginState extends State<UserLogin> {
                                       ),
                                     ),
                                   ],
-                                ),
-
-                                SizedBox(height: size.height * 0.015),
-
-                                Row(children: [
-                                  const Expanded(child: Divider()),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    child: Text('OR', style: TextStyle(
-                                        color: colorScheme.onSurfaceVariant, fontSize: 12)),
-                                  ),
-                                  const Expanded(child: Divider()),
-                                ]),
-
-                                SizedBox(height: size.height * 0.015),
-
-                                OutlinedButton.icon(
-                                  onPressed: isLoading ? null : _handleGoogleSignIn,
-                                  icon: const Icon(Icons.g_mobiledata_rounded,
-                                      size: 26, color: Colors.red),
-                                  label: const Text('Continue with Google'),
-                                  style: OutlinedButton.styleFrom(
-                                    minimumSize: const Size(double.infinity, 50),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14)),
-                                  ),
                                 ),
                               ],
                             ),

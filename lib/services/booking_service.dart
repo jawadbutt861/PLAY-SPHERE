@@ -37,7 +37,7 @@ class BookingService {
         'slot': slot,
         'payment': payment,
         'imageUrls': imageUrls,
-        'status': 'confirmed',
+        'status': 'pending',
         if (price != null) 'price': price,
         if (tournamentId != null) 'tournamentId': tournamentId,
         if (tournamentName != null) 'tournamentName': tournamentName,
@@ -127,15 +127,6 @@ class BookingService {
       _markExpiredInList(list);
       return list;
     });
-  }
-
-  /// Specific ground ki saari bookings (calendar ke liye)
-  static Stream<List<Map<String, dynamic>>> getGroundBookings(String groundId) {
-    return _db
-        .collection(_col)
-        .where('groundId', isEqualTo: groundId)
-        .snapshots()
-        .map((s) => s.docs.map((d) => {...d.data(), 'id': d.id}).toList());
   }
 
   /// Aaj ki bookings for manager (confirmed + completed)
@@ -228,7 +219,7 @@ class BookingService {
           .get();
       return snap.docs
           .map((d) => d.data())
-          .where((d) => d['status'] == 'confirmed' || d['status'] == 'completed')
+          .where((d) => d['status'] == 'confirmed' || d['status'] == 'completed' || d['status'] == 'pending')
           .map((d) => d['slot'] as String? ?? '')
           .where((s) => s.isNotEmpty)
           .toList();
@@ -240,6 +231,42 @@ class BookingService {
   /// Booking cancel karo
   static Future<void> cancelBooking(String bookingId) async {
     await _db.collection(_col).doc(bookingId).update({'status': 'cancelled'});
+  }
+
+  /// Manager booking confirm kare
+  static Future<void> confirmBooking(String bookingId) async {
+    final doc = await _db.collection(_col).doc(bookingId).get();
+    await _db.collection(_col).doc(bookingId).update({'status': 'confirmed'});
+    if (doc.exists) {
+      final data = doc.data()!;
+      final userId = data['userId'] as String? ?? '';
+      if (userId.isNotEmpty) {
+        await NotificationService.sendBookingApprovedNotification(
+          userId: userId,
+          groundName: data['groundName'] ?? '',
+          date: data['date'] ?? '',
+          slot: data['slot'] ?? '',
+        );
+      }
+    }
+  }
+
+  /// Manager booking reject kare
+  static Future<void> rejectBooking(String bookingId) async {
+    final doc = await _db.collection(_col).doc(bookingId).get();
+    await _db.collection(_col).doc(bookingId).update({'status': 'rejected'});
+    if (doc.exists) {
+      final data = doc.data()!;
+      final userId = data['userId'] as String? ?? '';
+      if (userId.isNotEmpty) {
+        await NotificationService.sendBookingRejectedNotification(
+          userId: userId,
+          groundName: data['groundName'] ?? '',
+          date: data['date'] ?? '',
+          slot: data['slot'] ?? '',
+        );
+      }
+    }
   }
 
   /// Booking delete karo (cancelled/completed)

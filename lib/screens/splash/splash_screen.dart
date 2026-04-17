@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../main.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -80,16 +81,35 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 
   void _startAnimations() async {
-    _backgroundController.forward();
-    await Future.delayed(const Duration(milliseconds: 300));
-    _logoController.forward();
-    await Future.delayed(const Duration(milliseconds: 800));
-    _textController.forward();
-    
-    // Navigate to role page after animations
-    await Future.delayed(const Duration(milliseconds: 2500));
-    if (mounted) {
-      Navigator.of(context).pushReplacementNamed('/');
+    try {
+      _backgroundController.forward();
+      await Future.delayed(const Duration(milliseconds: 300));
+      _logoController.forward();
+      await Future.delayed(const Duration(milliseconds: 800));
+      _textController.forward();
+
+      // Navigate after animations — onboarding check
+      await Future.delayed(const Duration(milliseconds: 2500));
+      if (!mounted) return;
+
+      bool done = false;
+      try {
+        final prefs = await SharedPreferences.getInstance()
+            .timeout(const Duration(seconds: 3));
+        done = prefs.getBool('onboarding_done') ?? false;
+      } catch (_) {
+        // SharedPreferences failed or timed out — go to onboarding
+        done = false;
+      }
+
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed(done ? '/' : '/Onboarding');
+      }
+    } catch (e) {
+      // Fallback: if anything goes wrong, still navigate
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/Onboarding');
+      }
     }
   }
 

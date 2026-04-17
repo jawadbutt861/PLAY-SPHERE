@@ -43,6 +43,15 @@ class _ManagerLoginState extends State<ManagerLogin> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => isLoading = true);
+    final userCredential = await _authService.signInWithGoogle(context: context);
+    setState(() => isLoading = false);
+    if (userCredential != null && mounted) {
+      Navigator.pushReplacementNamed(context, "/ManagerHome");
+    }
+  }
+
   Future<void> _handleForgotPassword() async {
     if (eMail.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -293,7 +302,46 @@ class _ManagerLoginState extends State<ManagerLogin> {
                                       ),
                                 
                                 SizedBox(height: size.height * 0.02),
-                                
+
+                                // Divider
+                                Row(
+                                  children: [
+                                    Expanded(child: Divider(color: Colors.grey[300])),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      child: Text(
+                                        'OR',
+                                        style: TextStyle(
+                                          color: Colors.grey[500],
+                                          fontSize: size.width * 0.033,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(child: Divider(color: Colors.grey[300])),
+                                  ],
+                                ),
+
+                                SizedBox(height: size.height * 0.02),
+
+                                // Google Sign-In Button
+                                GradientButton(
+                                  text: 'Continue with Google',
+                                  icon: Icons.g_mobiledata,
+                                  gradient: AppTheme.secondaryGradient,
+                                  onPressed: isLoading ? null : _handleGoogleSignIn,
+                                  width: double.infinity,
+                                  height: 56,
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                  textStyle: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: size.width * 0.042,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+
+                                SizedBox(height: size.height * 0.02),
+
                                 Wrap(
                                   alignment: WrapAlignment.center,
                                   crossAxisAlignment: WrapCrossAlignment.center,

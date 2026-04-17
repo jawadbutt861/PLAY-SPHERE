@@ -1,9 +1,9 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../../../main.dart';
 import '../../../services/booking_service.dart';
-import '../../../services/cancellation_service.dart';
+import '../../../providers/bookings_provider.dart';
+import '../../booking_chat_screen.dart';
 
 class Booked extends StatefulWidget {
   const Booked({super.key});
@@ -14,147 +14,58 @@ class Booked extends StatefulWidget {
 
 class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final String? _uid = FirebaseAuth.instance.currentUser?.uid;
-  List<Map<String, dynamic>> _firestoreBookings = [];
-  StreamSubscription? _sub;
   final Set<String> _expandedTournaments = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    if (_uid != null) {
-      _sub = BookingService.getUserBookings(_uid).listen((bookings) {
-        if (mounted) {
-          final now = DateTime.now();
-          final active = bookings.where((b) {
-            final status = b['status'] as String? ?? '';
-            // Cancelled bookings hide karo
-            if (status == 'cancelled') return false;
-            // Tournament bookings hamesha dikhao (jab tak cancelled nahi)
-            if (b['isTournament'] == true) return true;
-            // Regular bookings: expired slot remove karo
-            final endTime = BookingService.slotEndTime(
-                b['date'] as String? ?? '', b['slot'] as String? ?? '');
-            if (endTime == null) return true;
-            return now.isBefore(endTime);
-          }).toList();
-          setState(() => _firestoreBookings = active);
-        }
-      });
-    }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _sub?.cancel();
     super.dispose();
   }
 
-  List<Map<String, dynamic>> get _regularBookings =>
-      _firestoreBookings.where((b) => b['isTournament'] != true).toList();
-
-  List<Map<String, dynamic>> get _tournamentBookings =>
-      _firestoreBookings.where((b) => b['isTournament'] == true).toList();
-
-  /// Tournament bookings ko tournamentId ke hisaab se group karo
-  Map<String, List<Map<String, dynamic>>> get _groupedTournamentBookings {
+  Map<String, List<Map<String, dynamic>>> _groupedTournamentBookings(
+      List<Map<String, dynamic>> tournamentBookings) {
     final map = <String, List<Map<String, dynamic>>>{};
-    for (final b in _tournamentBookings) {
+    for (final b in tournamentBookings) {
       final tid = b['tournamentId'] as String? ?? 'Unknown Tournament';
       map.putIfAbsent(tid, () => []).add(b);
     }
     return map;
   }
   Future<void> _deleteBooking(Map<String, dynamic> booking) async {
-    final date = booking['date'] as String? ?? '';
-    final slot = booking['slot'] as String? ?? '';
-    final price = (booking['price'] as num?)?.toInt();
-    final policy = CancellationService.checkPolicy(date, slot);
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.cancel_outlined, color: Colors.red),
+          Icon(Icons.delete_outline_rounded, color: Colors.red),
           SizedBox(width: 10),
-          Text('Cancel Booking'),
+          Text('Remove Booking'),
         ]),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!policy.canCancel)
-              Text(policy.message,
-                  style: const TextStyle(color: Colors.red))
-            else ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: policy.refundColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: policy.refundColor.withValues(alpha: 0.3)),
-                ),
-                child: Row(children: [
-                  Icon(Icons.info_outline_rounded,
-                      color: policy.refundColor, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(policy.refundLabel,
-                            style: TextStyle(
-                                color: policy.refundColor,
-                                fontWeight: FontWeight.bold)),
-                        Text(policy.message,
-                            style: const TextStyle(fontSize: 12)),
-                        if (price != null && policy.refundPercent > 0)
-                          Text(
-                            'Refund: Rs. ${((price * policy.refundPercent) / 100).round()}',
-                            style: TextStyle(
-                                color: policy.refundColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13),
-                          ),
-                      ],
-                    ),
-                  ),
-                ]),
-              ),
-              const SizedBox(height: 10),
-              const Text('Are you sure you want to cancel?'),
-            ],
-          ],
-        ),
+        content: const Text('Remove this booking from your list?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text('No', style: TextStyle(color: Colors.grey[600])),
           ),
-          if (policy.canCancel)
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red, foregroundColor: Colors.white),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Cancel Booking'),
-            ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
         ],
       ),
     );
-
     if (confirmed != true) return;
     final id = booking['id'] as String?;
     if (id != null && id.isNotEmpty) {
-      await CancellationService.cancelBooking(
-        bookingId: id,
-        date: date,
-        slot: slot,
-        paidPrice: price,
-      );
+      await BookingService.deleteBooking(id);
     }
   }
 
@@ -229,22 +140,17 @@ class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final provider = context.watch<BookingsProvider>();
+    final regularBookings = provider.regularBookings;
+    final tournamentBookings = provider.tournamentBookings;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight + 48),
-        child: Container(
-          decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            automaticallyImplyLeading: false,
-            title: const Text('My Bookings',
-                style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
-            centerTitle: true,
-            bottom: TabBar(
+      body: Column(
+        children: [
+          Container(
+            decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
+            child: TabBar(
               controller: _tabController,
               indicatorColor: Colors.white,
               indicatorWeight: 3,
@@ -254,32 +160,33 @@ class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
               tabs: [
                 Tab(
                   icon: const Icon(Icons.event_available_rounded),
-                  text: 'Bookings (${_regularBookings.length})',
+                  text: 'Bookings (${regularBookings.length})',
                 ),
                 Tab(
                   icon: const Icon(Icons.emoji_events_rounded),
-                  text: 'Tournament (${_tournamentBookings.length})',
+                  text: 'Tournament (${tournamentBookings.length})',
                 ),
               ],
             ),
           ),
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildRegularList(),
-          _buildTournamentList(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildRegularList(regularBookings),
+                _buildTournamentList(tournamentBookings),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
   // ── Regular bookings flat list ──────────────────────────
-  Widget _buildRegularList() {
+  Widget _buildRegularList(List<Map<String, dynamic>> bookings) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final bookings = _regularBookings;
 
     if (bookings.isEmpty) {
       return Center(
@@ -309,10 +216,10 @@ class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
   }
 
   // ── Tournament bookings grouped + collapsible ──────────
-  Widget _buildTournamentList() {
+  Widget _buildTournamentList(List<Map<String, dynamic>> tournamentBookings) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final grouped = _groupedTournamentBookings;
+    final grouped = _groupedTournamentBookings(tournamentBookings);
 
     if (grouped.isEmpty) {
       return Center(
@@ -463,8 +370,29 @@ class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
     final groundCategory = booking['groundCategory'] as String? ?? '';
     final imageUrls =
         (booking['imageUrls'] as List?)?.cast<String>() ?? [];
-    final status = booking['status'] as String? ?? 'confirmed';
+    final status = booking['status'] as String? ?? 'pending';
     final isCancelled = status == 'cancelled';
+    final isPending = status == 'pending';
+    final isRejected = status == 'rejected';
+
+    Color statusColor;
+    String statusLabel;
+    if (isPending) {
+      statusColor = AppTheme.warningColor;
+      statusLabel = 'Pending';
+    } else if (isRejected) {
+      statusColor = AppTheme.errorColor;
+      statusLabel = 'Rejected';
+    } else if (isCancelled) {
+      statusColor = AppTheme.errorColor;
+      statusLabel = 'Cancelled';
+    } else if (status == 'completed') {
+      statusColor = AppTheme.primaryColor;
+      statusLabel = 'Completed';
+    } else {
+      statusColor = AppTheme.successColor;
+      statusLabel = 'Confirmed';
+    }
     final price = booking['price'];
 
     return ModernCard(
@@ -480,7 +408,7 @@ class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
             child: imageUrls.isNotEmpty
                 ? Image.network(imageUrls.first,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _placeholder(colorScheme))
+                    errorBuilder: (_, _, _) => _placeholder(colorScheme))
                 : _placeholder(colorScheme),
           ),
         ),
@@ -504,17 +432,13 @@ class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
-                      color: isCancelled
-                          ? AppTheme.errorColor.withValues(alpha: 0.15)
-                          : AppTheme.successColor.withValues(alpha: 0.15),
+                      color: statusColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      isCancelled ? 'Cancelled' : 'Confirmed',
+                      statusLabel,
                       style: TextStyle(
-                        color: isCancelled
-                            ? AppTheme.errorColor
-                            : AppTheme.successColor,
+                        color: statusColor,
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
                       ),
@@ -537,7 +461,7 @@ class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
             ),
           ),
         ),
-        if (canCancel && !isCancelled)
+        if (canCancel && status == 'confirmed')
           Padding(
             padding: const EdgeInsets.only(right: 4),
             child: IconButton(
@@ -545,6 +469,28 @@ class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
               onPressed: () => _confirmCancel(booking),
             ),
           ),
+        // Chat button
+        Padding(
+          padding: const EdgeInsets.only(right: 4),
+          child: IconButton(
+            icon: const Icon(Icons.chat_bubble_outline_rounded,
+                color: AppTheme.primaryColor),
+            onPressed: () {
+              final id = booking['id'] as String? ?? '';
+              if (id.isEmpty) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BookingChatScreen(
+                    bookingId: id,
+                    booking: booking,
+                    isManager: false,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ]),
     );
   }

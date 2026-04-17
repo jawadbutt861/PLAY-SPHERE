@@ -7,11 +7,14 @@ import '../../main.dart';
 import '../../services/ground_service.dart';
 import '../../services/booking_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/connectivity_service.dart';
+import '../booking_chat_screen.dart';
 import 'manager_profile.dart';
 import 'manager_notifications.dart';
 import 'manager_my_venues.dart';
 import 'add_venue_screen.dart';
 import 'manager_book_for_customer.dart';
+import 'manager_analytics.dart';
 
 // ─────────────────────────────────────────────
 // DASHBOARD
@@ -175,6 +178,17 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
               const LinearGradient(colors: [Color(0xFF1565C0), Color(0xFF1E88E5)]),
               () => Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const ManagerBookForCustomer())),
+            ),
+            const SizedBox(height: 12),
+            // Analytics — full width
+            _actionCard(
+              context,
+              'Analytics',
+              'Revenue, peak hours & insights',
+              Icons.bar_chart_rounded,
+              const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)]),
+              () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ManagerAnalyticsScreen())),
             ),
             const SizedBox(height: 24),
 
@@ -410,70 +424,143 @@ class _ManagerAllBookingsState extends State<ManagerAllBookings> {
                   itemBuilder: (_, i) {
                     final regularBookings = _bookings.where((b) => b['isTournament'] != true).toList();
                     final b = regularBookings[i];
-                    final imageUrls =
-                        (b['imageUrls'] as List?)?.cast<String>() ?? [];
+                    final imageUrls = (b['imageUrls'] as List?)?.cast<String>() ?? [];
+                    final status = b['status'] as String? ?? 'pending';
+                    final isPending = status == 'pending';
+
+                    Color statusColor;
+                    if (status == 'confirmed') statusColor = AppTheme.successColor;
+                    else if (status == 'rejected' || status == 'cancelled') statusColor = AppTheme.errorColor;
+                    else statusColor = AppTheme.warningColor;
+
                     return ModernCard(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: EdgeInsets.zero,
-                      child: Row(children: [
-                        ClipRRect(
-                          borderRadius: const BorderRadius.horizontal(
-                              left: Radius.circular(20)),
-                          child: SizedBox(
-                            width: 80,
-                            height: 90,
-                            child: imageUrls.isNotEmpty
-                                ? Image.network(imageUrls.first,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) =>
-                                        _imgPlaceholder(colorScheme))
-                                : _imgPlaceholder(colorScheme),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(b['groundName'] ?? '',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis),
-                                  const SizedBox(height: 3),
-                                  _row(Icons.person_outline,
-                                      b['userName'] ?? b['userEmail'] ?? '', theme),
-                                  _row(Icons.calendar_today_outlined,
-                                      b['date'] ?? '', theme),
-                                  _row(Icons.access_time_outlined,
-                                      b['slot'] ?? '', theme),
-                                  _row(Icons.payment_outlined,
-                                      b['payment'] ?? '', theme),
-                                ]),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                                color: AppTheme.successColor
-                                    .withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8)),
-                            child: Text(
-                              b['status'] ?? 'confirmed',
-                              style: const TextStyle(
-                                  color: AppTheme.successColor,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold),
+                      child: Column(
+                        children: [
+                          Row(children: [
+                            ClipRRect(
+                              borderRadius: const BorderRadius.horizontal(
+                                  left: Radius.circular(20)),
+                              child: SizedBox(
+                                width: 80,
+                                height: 90,
+                                child: imageUrls.isNotEmpty
+                                    ? Image.network(imageUrls.first,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) =>
+                                            _imgPlaceholder(colorScheme))
+                                    : _imgPlaceholder(colorScheme),
+                              ),
                             ),
-                          ),
-                        ),
-                      ]),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(b['groundName'] ?? '',
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis),
+                                      const SizedBox(height: 3),
+                                      _row(Icons.person_outline,
+                                          b['userName'] ?? b['userEmail'] ?? '', theme),
+                                      _row(Icons.calendar_today_outlined,
+                                          b['date'] ?? '', theme),
+                                      _row(Icons.access_time_outlined,
+                                          b['slot'] ?? '', theme),
+                                      _row(Icons.payment_outlined,
+                                          b['payment'] ?? '', theme),
+                                    ]),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: IconButton(
+                                icon: const Icon(Icons.chat_bubble_outline_rounded,
+                                    color: AppTheme.primaryColor, size: 20),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => BookingChatScreen(
+                                        bookingId: b['id'],
+                                        booking: b,
+                                        isManager: true,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 10),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                    color: statusColor.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8)),
+                                child: Text(
+                                  status[0].toUpperCase() + status.substring(1),
+                                  style: TextStyle(
+                                      color: statusColor,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          ]),
+                          // Confirm / Reject buttons for pending
+                          if (isPending)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                              child: Row(children: [
+                                Expanded(
+                                  child: GradientButton(
+                                    text: 'Confirm',
+                                    icon: Icons.check_circle_outline_rounded,
+                                    gradient: const LinearGradient(
+                                        colors: [Color(0xFF34C759), Color(0xFF28A745)]),
+                                    height: 40,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                    textStyle: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold),
+                                    onPressed: () async {
+                                      await BookingService.confirmBooking(b['id']);
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: GradientButton(
+                                    text: 'Reject',
+                                    icon: Icons.cancel_outlined,
+                                    gradient: const LinearGradient(
+                                        colors: [Color(0xFFEF4444), Color(0xFFDC2626)]),
+                                    height: 40,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                    textStyle: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold),
+                                    onPressed: () async {
+                                      await BookingService.rejectBooking(b['id']);
+                                    },
+                                  ),
+                                ),
+                              ]),
+                            ),
+                        ],
+                      ),
                     );
                   },
                 ),
@@ -683,7 +770,7 @@ class _ManagerTournamentBookingsState extends State<ManagerTournamentBookings> {
             child: imageUrls.isNotEmpty
                 ? Image.network(imageUrls.first,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _imgPlaceholder(colorScheme))
+                    errorBuilder: (_, _, _) => _imgPlaceholder(colorScheme))
                 : _imgPlaceholder(colorScheme),
           ),
         ),
@@ -1014,7 +1101,7 @@ class _ManagerAnalyticsState extends State<ManagerAnalytics> {
       barTouchData: BarTouchData(
         enabled: true,
         touchTooltipData: BarTouchTooltipData(
-          getTooltipItem: (g, _, rod, __) => BarTooltipItem(
+          getTooltipItem: (g, _, rod, _) => BarTooltipItem(
             rod.toY >= 1000
                 ? 'PKR ${(rod.toY / 1000).toStringAsFixed(1)}k'
                 : rod.toY.toInt().toString(),
@@ -1145,8 +1232,9 @@ class _ManagerhomeState extends State<Managerhome> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) setState(() => _index = 0);
       },
-      child: Scaffold(
-        backgroundColor: theme.colorScheme.surface,
+      child: ConnectivityWrapper(
+        child: Scaffold(
+          backgroundColor: theme.colorScheme.surface,
         appBar: ModernAppBar(
           title: _titles[_index],
           gradient: AppTheme.secondaryGradient,
@@ -1204,6 +1292,7 @@ class _ManagerhomeState extends State<Managerhome> {
                 icon: Icon(Icons.bar_chart_rounded), label: 'Analytics'),
           ],
         ),
+      ),
       ),
     );
   }

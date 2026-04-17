@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../main.dart';
 import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
-import '../email_verification/email_verification_screen.dart';
 
 class UserSignup extends StatefulWidget {
   const UserSignup({super.key});
@@ -64,7 +63,7 @@ class _SignupState extends State<UserSignup> {
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Account created! Please verify your email.',
+                    'Account created successfully!',
                     style: TextStyle(color: Colors.white),
                   ),
                 ),
@@ -76,13 +75,8 @@ class _SignupState extends State<UserSignup> {
           ),
         );
 
-        // Email verification screen pe bhejo
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const EmailVerificationScreen(),
-          ),
-        );
+        // Navigate to login
+        Navigator.pushReplacementNamed(context, '/UserLogIn');
       }
     }
 

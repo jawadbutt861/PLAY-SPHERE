@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../user home/favourite/global_data.dart';
 import '../../../main.dart';
 import '../../../services/tournament_service.dart';
+import 'tournament_announcements.dart';
 
 class Tournament extends StatefulWidget {
   const Tournament({super.key});
@@ -397,7 +398,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
   
   @override
@@ -439,6 +440,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                 Tab(icon: Icon(Icons.sports_rounded), text: "Matches"),
                 Tab(icon: Icon(Icons.leaderboard_rounded), text: "Points"),
                 Tab(icon: Icon(Icons.schedule_rounded), text: "Schedule"),
+                Tab(icon: Icon(Icons.campaign_rounded), text: "Updates"),
               ],
             ),
           ),
@@ -451,6 +453,11 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
           _buildMatchesTab(),
           _buildPointsTab(),
           _buildScheduleTab(),
+          TournamentAnnouncementsScreen(
+            tournamentId: widget.tournament['id'] as String? ?? '',
+            tournamentName: widget.tournament['name'] as String? ?? '',
+            creatorId: widget.tournament['createdBy'] as String? ?? '',
+          ),
         ],
       ),
     );

@@ -260,7 +260,7 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
                       shrinkWrap: true,
                       padding: EdgeInsets.zero,
                       itemCount: _searchResults.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (context, i) {
                         final r = _searchResults[i];
                         return ListTile(

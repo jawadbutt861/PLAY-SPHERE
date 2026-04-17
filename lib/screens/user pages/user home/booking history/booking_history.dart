@@ -99,7 +99,7 @@ class _BookingHistoryState extends State<BookingHistory> {
                               child: imageUrls.isNotEmpty
                                   ? Image.network(imageUrls.first,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) =>
+                                      errorBuilder: (_, _, _) =>
                                           _placeholder(colorScheme))
                                   : _placeholder(colorScheme),
                             ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../main.dart';
 import '../../services/auth_service.dart';
 import '../../services/cloudinary_service.dart';
@@ -18,10 +19,13 @@ class _ManagerProfileState extends State<ManagerProfile> {
   final AuthService _authService = AuthService();
   final ImagePicker _picker = ImagePicker();
   File? _image;
-  String? _imageUrl; // Cloudinary URL
+  String? _imageUrl;
   String _userName = 'Manager';
   String _userEmail = '';
   bool _isUploadingImage = false;
+  bool _isVerified = false;
+  // Payment info
+  Map<String, String> _paymentInfo = {};
 
   @override
   void initState() {
@@ -42,10 +46,26 @@ class _ManagerProfileState extends State<ManagerProfile> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? imageUrl = prefs.getString('imageUrl_${user.uid}');
       if (imageUrl != null && imageUrl.isNotEmpty) {
-        setState(() {
-          _imageUrl = imageUrl;
-        });
+        setState(() { _imageUrl = imageUrl; });
       }
+
+      // Check verification status from Firestore
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        if (doc.exists && mounted) {
+          setState(() {
+            _isVerified = doc.data()?['isVerified'] == true;
+            final pi = doc.data()?['paymentInfo'];
+            if (pi is Map) {
+              _paymentInfo = Map<String, String>.from(
+                  pi.map((k, v) => MapEntry(k.toString(), v.toString())));
+            }
+          });
+        }
+      } catch (_) {}
     }
   }
 
@@ -261,6 +281,106 @@ class _ManagerProfileState extends State<ManagerProfile> {
     );
   }
 
+  void _showPaymentInfoDialog() {
+    final bankCtrl = TextEditingController(text: _paymentInfo['bank'] ?? '');
+    final accountCtrl = TextEditingController(text: _paymentInfo['account'] ?? '');
+    final nameCtrl = TextEditingController(text: _paymentInfo['accountName'] ?? '');
+    final instructionsCtrl = TextEditingController(text: _paymentInfo['instructions'] ?? '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.account_balance_wallet_rounded, color: AppTheme.secondaryColor),
+          SizedBox(width: 10),
+          Text('Payment Info'),
+        ]),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text(
+              'This info will be shown to users when you confirm their booking.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: bankCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Bank / Service Name',
+                hintText: 'e.g. JazzCash, HBL, Easypaisa',
+                prefixIcon: Icon(Icons.account_balance_rounded,
+                    color: AppTheme.secondaryColor),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: accountCtrl,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Account / Phone Number',
+                hintText: 'e.g. 03001234567',
+                prefixIcon: Icon(Icons.numbers_rounded,
+                    color: AppTheme.secondaryColor),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Account Holder Name',
+                hintText: 'e.g. Ahmed Khan',
+                prefixIcon: Icon(Icons.person_outline_rounded,
+                    color: AppTheme.secondaryColor),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: instructionsCtrl,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Instructions (optional)',
+                hintText: 'e.g. Send screenshot after payment',
+                prefixIcon: Icon(Icons.info_outline_rounded,
+                    color: AppTheme.secondaryColor),
+              ),
+            ),
+          ]),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+          ),
+          GradientButton(
+            text: 'Save',
+            gradient: AppTheme.secondaryGradient,
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            textStyle: const TextStyle(
+                color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final uid = _authService.currentUser?.uid;
+              if (uid != null) {
+                final info = {
+                  'bank': bankCtrl.text.trim(),
+                  'account': accountCtrl.text.trim(),
+                  'accountName': nameCtrl.text.trim(),
+                  'instructions': instructionsCtrl.text.trim(),
+                };
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(uid)
+                    .update({'paymentInfo': info});
+                if (mounted) setState(() { _paymentInfo = info; });
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showLogoutDialog() {
     showDialog(
       context: context,
@@ -282,33 +402,13 @@ class _ManagerProfileState extends State<ManagerProfile> {
           GradientButton(
             text: 'Logout',
             onPressed: () async {
-              Navigator.pop(context);
-              
-              // Show loading dialog
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
+              Navigator.pop(context); // close dialog
 
               // Sign out from Firebase
               await _authService.signOut();
 
-              if (context.mounted) {
-                // Close loading dialog
-                Navigator.pop(context);
-                
-                // Navigate to role selection and clear stack
+              if (mounted) {
                 Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                
-                // Show success message
-                _showSnackBar(
-                  'Logged out successfully',
-                  AppTheme.successColor,
-                  Icons.check_circle_outline,
-                );
               }
             },
             gradient: const LinearGradient(
@@ -323,6 +423,117 @@ class _ManagerProfileState extends State<ManagerProfile> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog() {
+    final TextEditingController passwordController = TextEditingController();
+    bool isDeleting = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(children: [
+              Icon(Icons.delete_forever_rounded, color: Colors.red),
+              SizedBox(width: 12),
+              Text('Delete Account'),
+            ]),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'This will permanently delete your account and all associated data. This action cannot be undone.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: passwordController,
+                  decoration: InputDecoration(
+                    labelText: 'Confirm Password',
+                    filled: true,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    prefixIcon: const Icon(Icons.lock_outline, color: Colors.red),
+                  ),
+                  obscureText: true,
+                  enabled: !isDeleting,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: isDeleting ? null : () {
+                  passwordController.dispose();
+                  Navigator.of(context).pop();
+                },
+                child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+              ),
+              isDeleting
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2)),
+                    )
+                  : ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () async {
+                        if (passwordController.text.isEmpty) {
+                          _showSnackBar('Please enter your password',
+                              AppTheme.errorColor, Icons.error_outline);
+                          return;
+                        }
+                        setDialogState(() => isDeleting = true);
+                        try {
+                          final user = _authService.currentUser;
+                          if (user != null && user.email != null) {
+                            final credential = EmailAuthProvider.credential(
+                              email: user.email!,
+                              password: passwordController.text,
+                            );
+                            await user.reauthenticateWithCredential(credential);
+                            // Delete Firestore data
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .delete();
+                            await user.delete();
+                            if (context.mounted) {
+                              passwordController.dispose();
+                              Navigator.of(context).pop();
+                              Navigator.pushNamedAndRemoveUntil(
+                                  context, '/', (route) => false);
+                            }
+                          }
+                        } on FirebaseAuthException catch (e) {
+                          setDialogState(() => isDeleting = false);
+                          String msg = 'Failed to delete account';
+                          if (e.code == 'wrong-password') {
+                            msg = 'Incorrect password';
+                          }
+                          _showSnackBar(msg, AppTheme.errorColor, Icons.error_outline);
+                        } catch (_) {
+                          setDialogState(() => isDeleting = false);
+                          _showSnackBar('An error occurred',
+                              AppTheme.errorColor, Icons.error_outline);
+                        }
+                      },
+                      child: const Text('Delete'),
+                    ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -410,13 +621,42 @@ class _ManagerProfileState extends State<ManagerProfile> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      _userName,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _userName,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        if (_isVerified) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.verified_rounded,
+                                    color: Colors.white, size: 14),
+                                SizedBox(width: 4),
+                                Text('Verified',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -452,6 +692,21 @@ class _ManagerProfileState extends State<ManagerProfile> {
                     margin: const EdgeInsets.only(bottom: 12),
                     child: _buildProfileOption(
                       context,
+                      icon: Icons.account_balance_wallet_rounded,
+                      title: 'Payment Info',
+                      subtitle: _paymentInfo['bank']?.isNotEmpty == true
+                          ? '${_paymentInfo['bank']} • ${_paymentInfo['account']}'
+                          : 'Set your payment details for bookings',
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF10B981), Color(0xFF059669)],
+                      ),
+                      onTap: _showPaymentInfoDialog,
+                    ),
+                  ),
+                  ModernCard(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: _buildProfileOption(
+                      context,
                       icon: Icons.logout_rounded,
                       title: 'Logout',
                       subtitle: 'Sign out of your account',
@@ -459,6 +714,19 @@ class _ManagerProfileState extends State<ManagerProfile> {
                         colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
                       ),
                       onTap: _showLogoutDialog,
+                    ),
+                  ),
+                  ModernCard(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: _buildProfileOption(
+                      context,
+                      icon: Icons.delete_forever_rounded,
+                      title: 'Delete Account',
+                      subtitle: 'Permanently remove your account',
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF7F1D1D), Color(0xFF991B1B)],
+                      ),
+                      onTap: _showDeleteAccountDialog,
                     ),
                   ),
                 ],

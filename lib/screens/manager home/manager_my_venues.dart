@@ -81,6 +81,7 @@ class _ManagerMyVenuesState extends State<ManagerMyVenues> {
                   padding: const EdgeInsets.all(16),
                   itemCount: _grounds.length,
                   itemBuilder: (_, i) => _venueTile(context, _grounds[i]),
+
                 ),
     );
   }
@@ -106,7 +107,7 @@ class _ManagerMyVenuesState extends State<ManagerMyVenues> {
                   child: imageUrls.isNotEmpty
                       ? Image.network(imageUrls.first,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _placeholder(colorScheme))
+                          errorBuilder: (_, _, _) => _placeholder(colorScheme))
                       : _placeholder(colorScheme),
                 ),
               ),

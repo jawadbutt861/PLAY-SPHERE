@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../main.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/cloudinary_service.dart';
@@ -387,6 +388,32 @@ class _ProfileState extends State<Profile> {
                     margin: const EdgeInsets.only(bottom: 12),
                     child: _buildProfileOption(
                       context,
+                      icon: Icons.privacy_tip_rounded,
+                      title: 'Privacy Policy',
+                      subtitle: 'How we handle your data',
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0099CC), Color(0xFF0066FF)],
+                      ),
+                      onTap: () => Navigator.pushNamed(context, '/PrivacyPolicy'),
+                    ),
+                  ),
+                  ModernCard(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: _buildProfileOption(
+                      context,
+                      icon: Icons.description_rounded,
+                      title: 'Terms of Service',
+                      subtitle: 'Our terms and conditions',
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)],
+                      ),
+                      onTap: () => Navigator.pushNamed(context, '/TermsOfService'),
+                    ),
+                  ),
+                  ModernCard(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: _buildProfileOption(
+                      context,
                       icon: Icons.logout_rounded,
                       title: 'Logout',
                       subtitle: 'Sign out of your account',
@@ -396,6 +423,19 @@ class _ProfileState extends State<Profile> {
                       onTap: () {
                         _showLogoutDialog();
                       },
+                    ),
+                  ),
+                  ModernCard(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: _buildProfileOption(
+                      context,
+                      icon: Icons.delete_forever_rounded,
+                      title: 'Delete Account',
+                      subtitle: 'Permanently remove your account',
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF7F1D1D), Color(0xFF991B1B)],
+                      ),
+                      onTap: _showDeleteAccountDialog,
                     ),
                   ),
                 ],
@@ -469,6 +509,117 @@ class _ProfileState extends State<Profile> {
     );
   }
 
+  void _showDeleteAccountDialog() {
+    final TextEditingController passwordController = TextEditingController();
+    bool isDeleting = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(children: [
+              Icon(Icons.delete_forever_rounded, color: Colors.red),
+              SizedBox(width: 12),
+              Text('Delete Account'),
+            ]),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'This will permanently delete your account and all data. This cannot be undone.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: passwordController,
+                  decoration: InputDecoration(
+                    labelText: 'Confirm Password',
+                    filled: true,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    prefixIcon: const Icon(Icons.lock_outline, color: Colors.red),
+                  ),
+                  obscureText: true,
+                  enabled: !isDeleting,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: isDeleting ? null : () {
+                  passwordController.dispose();
+                  Navigator.of(context).pop();
+                },
+                child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+              ),
+              isDeleting
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2)),
+                    )
+                  : ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () async {
+                        if (passwordController.text.isEmpty) {
+                          _showSnackBar('Please enter your password',
+                              AppTheme.errorColor, Icons.error_outline);
+                          return;
+                        }
+                        setDialogState(() => isDeleting = true);
+                        try {
+                          final user = _authService.currentUser;
+                          if (user != null && user.email != null) {
+                            final credential = EmailAuthProvider.credential(
+                              email: user.email!,
+                              password: passwordController.text,
+                            );
+                            await user.reauthenticateWithCredential(credential);
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .delete();
+                            await user.delete();
+                            if (context.mounted) {
+                              passwordController.dispose();
+                              Navigator.of(context).pop();
+                              Navigator.pushNamedAndRemoveUntil(
+                                  context, '/', (route) => false);
+                            }
+                          }
+                        } on FirebaseAuthException catch (e) {
+                          setDialogState(() => isDeleting = false);
+                          _showSnackBar(
+                              e.code == 'wrong-password'
+                                  ? 'Incorrect password'
+                                  : 'Failed to delete account',
+                              AppTheme.errorColor,
+                              Icons.error_outline);
+                        } catch (_) {
+                          setDialogState(() => isDeleting = false);
+                          _showSnackBar('An error occurred',
+                              AppTheme.errorColor, Icons.error_outline);
+                        }
+                      },
+                      child: const Text('Delete'),
+                    ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   void _showLogoutDialog() {
     showDialog(
       context: context,
@@ -490,38 +641,15 @@ class _ProfileState extends State<Profile> {
           GradientButton(
             text: 'Logout',
             onPressed: () async {
-              Navigator.pop(context);
-              
-              // Show loading dialog
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
+              Navigator.pop(context); // close dialog
 
               // Sign out from Firebase
               await _authService.signOut();
 
-              if (context.mounted) {
-                // Close loading dialog
-                Navigator.pop(context);
-                
-                // Navigate to role selection and clear stack
+              if (mounted) {
                 Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                
-                // Show success message
-                _showSnackBar(
-                  'Logged out successfully',
-                  AppTheme.successColor,
-                  Icons.check_circle_outline,
-                );
               }
             },
-            gradient: const LinearGradient(
-              colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
-            ),
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             textStyle: const TextStyle(

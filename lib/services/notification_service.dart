@@ -119,6 +119,54 @@ class NotificationService {
     }
   }
 
+  /// Manager ne booking confirm ki — user ko notify karo
+  static Future<void> sendBookingApprovedNotification({
+    required String userId,
+    required String groundName,
+    required String date,
+    required String slot,
+  }) async {
+    try {
+      await _db.collection(_col).add({
+        'type': 'user',
+        'userId': userId,
+        'title': '✅ Booking Approved!',
+        'body': 'Manager ne aapki booking approve kar di!\n"$groundName" • $date • $slot',
+        'groundName': groundName,
+        'date': date,
+        'slot': slot,
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('NotificationService sendApproved ERROR: $e');
+    }
+  }
+
+  /// Manager ne booking reject ki — user ko notify karo
+  static Future<void> sendBookingRejectedNotification({
+    required String userId,
+    required String groundName,
+    required String date,
+    required String slot,
+  }) async {
+    try {
+      await _db.collection(_col).add({
+        'type': 'user',
+        'userId': userId,
+        'title': '❌ Booking Rejected',
+        'body': 'Manager ne aapki booking reject kar di.\n"$groundName" • $date • $slot',
+        'groundName': groundName,
+        'date': date,
+        'slot': slot,
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('NotificationService sendRejected ERROR: $e');
+    }
+  }
+
   /// User ki notifications
   static Stream<List<Map<String, dynamic>>> getUserNotifications(
       String userId) {

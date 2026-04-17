@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "PlaySphere (debug)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--dart-define=CLOUDINARY_CLOUD_NAME=dzv5xsabw",
+        "--dart-define=CLOUDINARY_UPLOAD_PRESET=ml_default"
+      ]
+    },
+    {
+      "name": "PlaySphere (release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release",
+      "args": [
+        "--dart-define=CLOUDINARY_CLOUD_NAME=dzv5xsabw",
+        "--dart-define=CLOUDINARY_UPLOAD_PRESET=ml_default"
+      ]
+    }
+  ]
+}

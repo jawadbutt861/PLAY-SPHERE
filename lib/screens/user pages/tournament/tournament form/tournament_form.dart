@@ -653,7 +653,7 @@ class _TournamentFormState extends State<TournamentForm> {
                 height: 48,
                 child: imageUrls.isNotEmpty
                     ? Image.network(imageUrls.first, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
+                        errorBuilder: (_, _, _) =>
                             const Icon(Icons.sports))
                     : const Icon(Icons.sports),
               ),

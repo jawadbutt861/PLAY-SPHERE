@@ -120,7 +120,7 @@ class _FavouriteState extends State<Favourite> {
                               child: imageUrls.isNotEmpty
                                   ? Image.network(imageUrls.first,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) =>
+                                      errorBuilder: (_, _, _) =>
                                           _placeholder(colorScheme))
                                   : _placeholder(colorScheme),
                             ),

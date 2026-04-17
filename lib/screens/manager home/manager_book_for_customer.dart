@@ -249,7 +249,7 @@ class _ManagerBookForCustomerState extends State<ManagerBookForCustomer> {
                         width: 56, height: 56,
                         child: imageUrls.isNotEmpty
                             ? Image.network(imageUrls.first, fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
+                                errorBuilder: (_, _, _) =>
                                     Container(color: colorScheme.surfaceContainerHighest,
                                         child: const Icon(Icons.sports)))
                             : Container(color: colorScheme.surfaceContainerHighest,

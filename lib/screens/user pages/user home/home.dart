@@ -3,8 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../../main.dart';
-import '../../../services/ground_service.dart';
+import '../../../providers/grounds_provider.dart';
 import 'favourite/booking_helper.dart';
 
 // ── Auto-scrolling ground cards per category ──────────────
@@ -103,8 +104,6 @@ class _TopGroundsRowState extends State<TopGroundsRow> {
   Widget _groundCard(Map<String, dynamic> g, ColorScheme colorScheme) {
     final imageUrls = (g['imageUrls'] as List?)?.cast<String>() ?? [];
     final bookingCount = g['bookingCount'] as int? ?? 0;
-    final rating = (g['avgRating'] as num?)?.toDouble() ?? 0;
-    final reviewCount = (g['reviewCount'] as num?)?.toInt() ?? 0;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -126,7 +125,7 @@ class _TopGroundsRowState extends State<TopGroundsRow> {
             imageUrls.isNotEmpty
                 ? Image.network(imageUrls.first,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                         color: colorScheme.surfaceContainerHighest,
                         child: Icon(Icons.sports,
                             size: 48, color: colorScheme.onSurfaceVariant)))
@@ -180,53 +179,24 @@ class _TopGroundsRowState extends State<TopGroundsRow> {
                       ],
                     ),
                   ),
-                  // Badges — rating + booking count
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      // Rating badge
-                      if (rating > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppTheme.accentColor.withValues(alpha: 0.92),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Icon(Icons.star_rounded,
-                                size: 12, color: Colors.white),
-                            const SizedBox(width: 3),
-                            Text(
-                              '${rating.toStringAsFixed(1)} ($reviewCount)',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ]),
-                        ),
-                      if (rating > 0) const SizedBox(height: 4),
-                      // Booking count badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.bookmark_rounded,
-                              size: 12, color: Colors.white),
-                          const SizedBox(width: 4),
-                          Text('$bookingCount',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold)),
-                        ]),
-                      ),
-                    ],
+                  // Booking count badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.bookmark_rounded,
+                          size: 12, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text('$bookingCount',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold)),
+                    ]),
                   ),
                 ],
               ),
@@ -248,10 +218,8 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   final _db = FirebaseFirestore.instance;
-  // category -> list of grounds sorted by booking count
-  Map<String, List<Map<String, dynamic>>> _topGrounds = {};
-  bool _loading = true;
-  StreamSubscription? _groundsSub;
+  bool _countsLoading = true;
+  Map<String, int> _bookingCounts = {};
 
   static const _categories = [
     'Cricket', 'Football', 'Tennis', 'Basketball', 'Hockey', 'Volleyball'
@@ -260,53 +228,46 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    _groundsSub = GroundService.getGroundsByCategory('ALL').listen((grounds) {
-      if (mounted) _loadTopGrounds(grounds);
-    });
+    _loadBookingCounts();
   }
 
-  @override
-  void dispose() {
-    _groundsSub?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _loadTopGrounds(List<Map<String, dynamic>> grounds) async {
-    // Count bookings per ground
-    final Map<String, int> bookingCounts = {};
+  Future<void> _loadBookingCounts() async {
     try {
       final snap = await _db
           .collection('bookings')
           .where('status', whereIn: ['confirmed', 'completed'])
           .get();
+      final counts = <String, int>{};
       for (final doc in snap.docs) {
         final gid = doc.data()['groundId'] as String? ?? '';
-        if (gid.isNotEmpty) bookingCounts[gid] = (bookingCounts[gid] ?? 0) + 1;
+        if (gid.isNotEmpty) counts[gid] = (counts[gid] ?? 0) + 1;
       }
-    } catch (_) {}
+      if (mounted) setState(() { _bookingCounts = counts; _countsLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _countsLoading = false);
+    }
+  }
 
-    // Group by category, attach count, sort — sirf top 1
-    final Map<String, List<Map<String, dynamic>>> result = {};
+  Map<String, List<Map<String, dynamic>>> _buildTopGrounds(List<Map<String, dynamic>> grounds) {
+    final result = <String, List<Map<String, dynamic>>>{};
     for (final cat in _categories) {
       final catGrounds = grounds
           .where((g) => g['category'] == cat)
-          .map((g) => {
-                ...g,
-                'bookingCount': bookingCounts[g['id'] as String? ?? ''] ?? 0,
-              })
+          .map((g) => {...g, 'bookingCount': _bookingCounts[g['id'] as String? ?? ''] ?? 0})
           .toList();
-      catGrounds.sort((a, b) =>
-          (b['bookingCount'] as int).compareTo(a['bookingCount'] as int));
-      result[cat] = catGrounds.take(1).toList(); // only top 1
+      catGrounds.sort((a, b) => (b['bookingCount'] as int).compareTo(a['bookingCount'] as int));
+      result[cat] = catGrounds.take(1).toList();
     }
-
-    if (mounted) setState(() { _topGrounds = result; _loading = false; });
+    return result;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final groundsProvider = context.watch<GroundsProvider>();
+    final loading = groundsProvider.loading || _countsLoading;
+    final topGrounds = loading ? {} : _buildTopGrounds(groundsProvider.grounds);
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -457,7 +418,7 @@ class _HomeState extends State<Home> {
           ),
 
           // Top Grounds per category
-          if (_loading)
+          if (loading)
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
@@ -466,7 +427,7 @@ class _HomeState extends State<Home> {
             )
           else
             ..._categories.map((cat) {
-              final grounds = _topGrounds[cat] ?? [];
+              final grounds = topGrounds[cat] ?? [];
               if (grounds.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
               final g = grounds.first;
               final imageUrls = (g['imageUrls'] as List?)?.cast<String>() ?? [];
@@ -514,7 +475,7 @@ class _HomeState extends State<Home> {
                             imageUrls.isNotEmpty
                                 ? Image.network(imageUrls.first,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
+                                    errorBuilder: (_, _, _) => Container(
                                         color: colorScheme.surfaceContainerHighest,
                                         child: Icon(Icons.sports,
                                             size: 48,

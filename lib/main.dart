@@ -1,6 +1,4 @@
 
-// ignore_for_file: unnecessary_import
-
 import "package:f_y_p/screens/manager%20login/manager_login.dart";
 import "package:f_y_p/screens/user%20login/user_login.dart";
 import "package:f_y_p/screens/manager%20home/manager_home.dart";
@@ -10,12 +8,6 @@ import "package:f_y_p/screens/splash/splash_screen.dart";
 import "package:f_y_p/screens/user%20pages/booking/booking.dart";
 import "package:f_y_p/screens/user%20pages/categories/categories.dart";
 import "package:f_y_p/screens/user%20pages/notifications.dart";
-import 'services/crashlytics_service.dart';
-import "package:f_y_p/screens/email_verification/email_verification_screen.dart";
-import "package:f_y_p/screens/user%20pages/search/search_filter_screen.dart";
-import "package:f_y_p/screens/legal/legal_screen.dart";
-import 'package:provider/provider.dart';
-import 'providers/app_provider.dart';
 import "package:f_y_p/screens/user%20pages/tournament/tournament%20form/tournament_form.dart";
 import "package:f_y_p/screens/user%20pages/user%20home/booking%20history/booking_history.dart";
 import "package:f_y_p/screens/user%20pages/user%20home/calender/calender.dart";
@@ -24,17 +16,29 @@ import "package:f_y_p/screens/user%20pages/user%20home/home.dart";
 import "package:f_y_p/screens/user%20pages/user%20home/profile.dart";
 import "package:f_y_p/screens/user%20pages/user_main.dart";
 import "package:f_y_p/screens/user%20signup/user_signup.dart";
+import "package:f_y_p/screens/onboarding/onboarding_screen.dart";
+import "package:f_y_p/screens/legal/privacy_policy_screen.dart";
+import "package:f_y_p/screens/legal/terms_of_service_screen.dart";
+import 'providers/grounds_provider.dart';
+import 'package:provider/provider.dart';
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter/foundation.dart";
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'services/booking_service.dart';
+import 'services/connectivity_service.dart';
+import 'config/app_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Validate compile-time config (debug builds only)
+  AppConfig.validate();
+
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -44,17 +48,30 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Firestore offline persistence enable karo
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: true,
-    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-  );
+  // ── Crashlytics ──────────────────────────────────────────
+  // Flutter framework errors → Crashlytics
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  // Async errors outside Flutter framework
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
 
-  // Crashlytics init (errors catch karo)
-  await CrashlyticsService.init();
+  // ── App Check ────────────────────────────────────────────
+  // Only activate App Check in release builds — debug provider requires
+  // a registered debug token in Firebase console which may not be set up.
+  if (!kDebugMode) {
+    await FirebaseAppCheck.instance.activate(
+      providerAndroid: const AndroidPlayIntegrityProvider(),
+      providerApple: const AppleDeviceCheckProvider(),
+    );
+  }
 
-  // Expired bookings auto-complete on startup
-  await BookingService.autoCompleteExpiredBookings();
+  // Expired bookings auto-complete on startup (non-blocking)
+  BookingService.autoCompleteExpiredBookings().catchError((_) {});
+
+  // Connectivity monitoring
+  ConnectivityService.init();
 
   runApp(const MyApp());
 }
@@ -88,7 +105,8 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AppProvider()),
+        // GroundsProvider at app level — no auth needed, shared by home/search/categories
+        ChangeNotifierProvider(create: (_) => GroundsProvider()),
       ],
       child: MaterialApp(
       title: 'PlaySphere',
@@ -96,6 +114,19 @@ class _MyAppState extends State<MyApp> {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.lightTheme,
       themeMode: ThemeMode.dark,
+      // Font scaling: clamp between 0.85x and 1.3x so layouts don't break
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQuery.copyWith(
+            textScaler: mediaQuery.textScaler.clamp(
+              minScaleFactor: 0.85,
+              maxScaleFactor: 1.3,
+            ),
+          ),
+          child: child!,
+        );
+      },
       initialRoute: '/splash',
       routes: {
         '/splash' : (context) => const SplashScreen(),
@@ -104,7 +135,6 @@ class _MyAppState extends State<MyApp> {
         '/UserSignUp' : (context) => const UserSignup(),
         '/UserLogIn' : (context) => const UserLogin(),
         '/ManagerLogIn' : (context) => const ManagerLogin(),
-        '/EmailVerification': (context) => const EmailVerificationScreen(),
         '/UserMain' : (context) => const UserMain(),
         '/ManagerHome' : (context) => const Managerhome(),
         '/Categories' : (context) => const Categories(),
@@ -116,12 +146,12 @@ class _MyAppState extends State<MyApp> {
         '/TournamentForm' : (context) => const TournamentForm(),
         '/Profile' : (context) => const Profile(),
         '/Notifications' : (context) => const Notifications(),
-        '/Search': (context) => const SearchFilterScreen(),
-        '/Terms': (context) => const LegalScreen(type: LegalType.terms),
-        '/Privacy': (context) => const LegalScreen(type: LegalType.privacy),
+        '/Onboarding'    : (context) => const OnboardingScreen(),
+        '/PrivacyPolicy' : (context) => const PrivacyPolicyScreen(),
+        '/TermsOfService': (context) => const TermsOfServiceScreen(),
       },
-      ),
-    );
+      ),  // MaterialApp
+    );   // MultiProvider
   }
 }
 
@@ -543,14 +573,22 @@ class _ModernCardState extends State<ModernCard> with SingleTickerProviderStateM
           elevation: widget.elevation ?? 0,
           borderRadius: BorderRadius.circular(20),
           child: InkWell(
-            onTap: widget.onTap,
+            onTap: widget.onTap == null
+                ? null
+                : () {
+                    HapticFeedback.selectionClick();
+                    widget.onTap!();
+                  },
             onTapDown: (_) => _controller.forward(),
             onTapUp: (_) => _controller.reverse(),
             onTapCancel: () => _controller.reverse(),
             borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: widget.padding ?? const EdgeInsets.all(20),
-              child: widget.child,
+            child: Semantics(
+              button: widget.onTap != null,
+              child: Padding(
+                padding: widget.padding ?? const EdgeInsets.all(20),
+                child: widget.child,
+              ),
             ),
           ),
         ),
@@ -635,33 +673,43 @@ class _GradientButtonState extends State<GradientButton> with SingleTickerProvid
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: widget.onPressed,
+                onTap: widget.onPressed == null
+                    ? null
+                    : () {
+                        HapticFeedback.lightImpact();
+                        widget.onPressed!();
+                      },
                 onTapDown: (_) => _controller.forward(),
                 onTapUp: (_) => _controller.reverse(),
                 onTapCancel: () => _controller.reverse(),
                 borderRadius: BorderRadius.circular(20),
                 splashColor: Colors.white.withValues(alpha: 0.3),
                 highlightColor: Colors.white.withValues(alpha: 0.1),
-                child: Padding(
-                  padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (widget.icon != null) ...[
-                        Icon(widget.icon, color: Colors.white, size: 24),
-                        const SizedBox(width: 12),
-                      ],
-                      Text(
-                        widget.text,
-                        style: widget.textStyle ?? const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
+                child: Semantics(
+                  button: true,
+                  enabled: widget.onPressed != null,
+                  label: widget.text,
+                  child: Padding(
+                    padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (widget.icon != null) ...[
+                          Icon(widget.icon, color: Colors.white, size: 24),
+                          const SizedBox(width: 12),
+                        ],
+                        Text(
+                          widget.text,
+                          style: widget.textStyle ?? const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -833,4 +881,26 @@ class _ShimmerContainerState extends State<ShimmerContainer> with SingleTickerPr
       },
     );
   }
+}
+
+/// Centralized haptic feedback helper.
+/// Use this anywhere in the app for consistent tactile responses.
+class HapticHelper {
+  /// Light tap — nav items, chips, toggles
+  static void selection() => HapticFeedback.selectionClick();
+
+  /// Button press — primary actions
+  static void light() => HapticFeedback.lightImpact();
+
+  /// Confirm / success — booking confirmed, form submitted
+  static void medium() => HapticFeedback.mediumImpact();
+
+  /// Error / destructive action — delete, cancel
+  static void heavy() => HapticFeedback.heavyImpact();
+
+  /// Success notification
+  static void success() => HapticFeedback.mediumImpact();
+
+  /// Error notification
+  static void error() => HapticFeedback.vibrate();
 }
