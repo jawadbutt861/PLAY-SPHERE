@@ -20,15 +20,12 @@ class _ManagerBookForCustomerState extends State<ManagerBookForCustomer> {
   Map<String, dynamic>? _selectedGround;
   DateTime? _selectedDate;
   String? _selectedSlot;
-  String? _selectedPayment;
   final _customerNameCtrl = TextEditingController();
   final _customerPhoneCtrl = TextEditingController();
 
   List<String> _bookedSlots = [];
   bool _loadingSlots = false;
   bool _saving = false;
-
-  final List<String> _payments = ['JazzCash', 'EasyPaisa', 'Cash'];
 
   @override
   void initState() {
@@ -92,7 +89,6 @@ class _ManagerBookForCustomerState extends State<ManagerBookForCustomer> {
     if (_selectedGround == null ||
         _selectedDate == null ||
         _selectedSlot == null ||
-        _selectedPayment == null ||
         _customerNameCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Please fill all fields'),
@@ -135,9 +131,10 @@ class _ManagerBookForCustomerState extends State<ManagerBookForCustomer> {
       userName: customerName,
       date: dk,
       slot: _selectedSlot!,
-      payment: _selectedPayment!,
+      payment: 'Pay at Venue',
       imageUrls: (g['imageUrls'] as List?)?.cast<String>() ?? [],
       price: price,
+      isWalkIn: true, // manager ki booking — directly confirmed
     );
 
     if (mounted) {
@@ -148,7 +145,6 @@ class _ManagerBookForCustomerState extends State<ManagerBookForCustomer> {
           _selectedGround = null;
           _selectedDate = null;
           _selectedSlot = null;
-          _selectedPayment = null;
           _bookedSlots = [];
           _customerNameCtrl.clear();
           _customerPhoneCtrl.clear();
@@ -370,41 +366,6 @@ class _ManagerBookForCustomerState extends State<ManagerBookForCustomer> {
                   );
                 }).toList(),
               ),
-
-            const SizedBox(height: 24),
-
-            // ── Payment ──
-            _sectionTitle('Payment Method', Icons.payment_rounded),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _payments.map((p) {
-                final selected = _selectedPayment == p;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedPayment = p),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 10),
-                    decoration: BoxDecoration(
-                      gradient: selected ? AppTheme.secondaryGradient : null,
-                      color: selected ? null : colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: selected
-                            ? AppTheme.secondaryColor
-                            : colorScheme.outline.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Text(p,
-                        style: TextStyle(
-                            color: selected ? Colors.white : colorScheme.onSurface,
-                            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                            fontSize: 13)),
-                  ),
-                );
-              }).toList(),
-            ),
 
             const SizedBox(height: 32),
 

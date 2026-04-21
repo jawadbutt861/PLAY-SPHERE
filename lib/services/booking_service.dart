@@ -23,6 +23,7 @@ class BookingService {
     int? price,
     String? tournamentId,
     String? tournamentName,
+    bool isWalkIn = false,
   }) async {
     try {
       final doc = await _db.collection(_col).add({
@@ -37,7 +38,9 @@ class BookingService {
         'slot': slot,
         'payment': payment,
         'imageUrls': imageUrls,
-        'status': 'pending',
+        // Walk-in bookings are directly confirmed; user bookings start as pending
+        'status': isWalkIn ? 'confirmed' : 'pending',
+        'isWalkIn': isWalkIn,
         if (price != null) 'price': price,
         if (tournamentId != null) 'tournamentId': tournamentId,
         if (tournamentName != null) 'tournamentName': tournamentName,

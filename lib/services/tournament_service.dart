@@ -159,38 +159,44 @@ class TournamentService {
         updateTeam(team2, abandoned: true);
       }
 
-      // Fill TBD slots in subsequent matches
-      // Find the next match that has 'TBD' and fill with winner/loser
+      // ── Fill TBD slots using stored pointers ──
       if (winner != null) {
-        // Count how many matches in this round came before current match
-        final currentRound = match['round'] as String? ?? '';
-        final roundMatches = matches
-            .where((m) => (m['round'] as String? ?? '') == currentRound)
-            .toList();
-        final posInRound = roundMatches.indexOf(match);
-
-        // Find next round matches with TBD — fill winner
-        int tbdFilled = 0;
-        for (final m in matches) {
-          if (m['status'] != 'scheduled') continue;
-          if (m['team1'] == 'TBD' && tbdFilled == posInRound) {
-            m['team1'] = winner;
-            tbdFilled = -1;
-            break;
-          } else if (m['team2'] == 'TBD' && tbdFilled == posInRound) {
-            m['team2'] = winner;
-            tbdFilled = -1;
-            break;
+        // Use nextWinnerSlot pointer if available
+        final winnerSlot = match['nextWinnerSlot'] as String?;
+        if (winnerSlot != null) {
+          final parts = winnerSlot.split(':');
+          final targetIdx = int.tryParse(parts[0]);
+          final slot = parts.length > 1 ? parts[1] : 'team1';
+          if (targetIdx != null && targetIdx < matches.length) {
+            matches[targetIdx][slot] = winner;
           }
-          if (m['team1'] == 'TBD' || m['team2'] == 'TBD') tbdFilled++;
-        }
-
-        // Fill loser into LB TBD (for double elimination)
-        if (loser != null) {
+        } else {
+          // Fallback: find first TBD in next non-LB scheduled match
           for (final m in matches) {
             if (m['status'] != 'scheduled') continue;
-            if ((m['round'] as String? ?? '').startsWith('LB') &&
-                (m['team1'] == 'TBD' || m['team2'] == 'TBD')) {
+            final mRound = m['round'] as String? ?? '';
+            if (mRound.startsWith('LB')) continue;
+            if (m['team1'] == 'TBD') { m['team1'] = winner; break; }
+            if (m['team2'] == 'TBD') { m['team2'] = winner; break; }
+          }
+        }
+
+        // Fill loser slot
+        if (loser != null) {
+          final loserSlot = match['nextLoserSlot'] as String?;
+          if (loserSlot != null) {
+            final parts = loserSlot.split(':');
+            final targetIdx = int.tryParse(parts[0]);
+            final slot = parts.length > 2 ? parts[2] : 'team1';
+            if (targetIdx != null && targetIdx < matches.length) {
+              matches[targetIdx][slot] = loser;
+            }
+          } else {
+            // Fallback: find first TBD in LB
+            for (final m in matches) {
+              if (m['status'] != 'scheduled') continue;
+              final mRound = m['round'] as String? ?? '';
+              if (!mRound.startsWith('LB') && mRound != 'Grand Final') continue;
               if (m['team1'] == 'TBD') { m['team1'] = loser; break; }
               if (m['team2'] == 'TBD') { m['team2'] = loser; break; }
             }

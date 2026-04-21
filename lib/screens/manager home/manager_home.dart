@@ -373,15 +373,18 @@ class ManagerAllBookings extends StatefulWidget {
   State<ManagerAllBookings> createState() => _ManagerAllBookingsState();
 }
 
-class _ManagerAllBookingsState extends State<ManagerAllBookings> {
+class _ManagerAllBookingsState extends State<ManagerAllBookings>
+    with SingleTickerProviderStateMixin {
   final String? _uid = FirebaseAuth.instance.currentUser?.uid;
   List<Map<String, dynamic>> _bookings = [];
   bool _loading = true;
   StreamSubscription? _sub;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     if (_uid != null) {
       _sub = BookingService.getManagerBookings(_uid).listen((b) {
         if (mounted) setState(() { _bookings = b; _loading = false; });
@@ -392,178 +395,226 @@ class _ManagerAllBookingsState extends State<ManagerAllBookings> {
   }
 
   @override
-  void dispose() { _sub?.cancel(); super.dispose(); }
+  void dispose() {
+    _tabController.dispose();
+    _sub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+
+    final all = _bookings.where((b) => b['isTournament'] != true).toList();
+    final userBookings = all.where((b) =>
+        b['isWalkIn'] != true && (b['userId'] as String? ?? '').isNotEmpty).toList();
+    final walkIn = all.where((b) =>
+        b['isWalkIn'] == true || (b['userId'] as String? ?? '').isEmpty).toList();
+
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: const ModernAppBar(
-          title: 'Regular Bookings', gradient: AppTheme.secondaryGradient),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _bookings.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.event_busy_rounded,
-                          size: 64, color: colorScheme.onSurfaceVariant),
-                      const SizedBox(height: 16),
-                      Text('No bookings yet',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                              color: colorScheme.onSurfaceVariant)),
+      body: Column(children: [
+        // Tab bar — same style as user booking screen
+        Container(
+          decoration: const BoxDecoration(gradient: AppTheme.secondaryGradient),
+          child: SafeArea(
+            bottom: false,
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: Colors.white,
+              indicatorWeight: 3,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+              tabs: [
+                Tab(
+                  icon: const Icon(Icons.event_available_rounded),
+                  text: 'Regular Bookings (${userBookings.length})',
+                ),
+                Tab(
+                  icon: const Icon(Icons.person_add_rounded),
+                  text: 'Book for Customer (${walkIn.length})',
+                ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildList(userBookings, theme, colorScheme, isWalkIn: false),
+                    _buildList(walkIn, theme, colorScheme, isWalkIn: true),
+                  ],
+                ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildList(List<Map<String, dynamic>> list, ThemeData theme,
+      ColorScheme colorScheme, {required bool isWalkIn}) {
+    if (list.isEmpty) {
+      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.event_busy_rounded, size: 64, color: colorScheme.onSurfaceVariant),
+        const SizedBox(height: 16),
+        Text(isWalkIn ? 'No walk-in bookings' : 'No user bookings',
+            style: theme.textTheme.titleLarge?.copyWith(color: colorScheme.onSurfaceVariant)),
+        const SizedBox(height: 8),
+        Text(isWalkIn ? 'Use Book for Customer to add' : 'User bookings will appear here',
+            style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
+      ]));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: list.length,
+      itemBuilder: (_, i) => _bookingCard(list[i], theme, colorScheme, isWalkIn: isWalkIn),
+    );
+  }
+
+  Widget _bookingCard(Map<String, dynamic> b, ThemeData theme, ColorScheme colorScheme, {required bool isWalkIn}) {
+    final imageUrls = (b['imageUrls'] as List?)?.cast<String>() ?? [];
+    final status = b['status'] as String? ?? 'confirmed';
+    final isPending = status == 'pending' && !isWalkIn;
+    final isCancelled = status == 'cancelled';
+    final price = b['price'];
+
+    Color statusColor;
+    String statusLabel;
+    if (status == 'pending') { statusColor = AppTheme.warningColor; statusLabel = 'Pending'; }
+    else if (status == 'rejected') { statusColor = AppTheme.errorColor; statusLabel = 'Rejected'; }
+    else if (isCancelled) { statusColor = AppTheme.errorColor; statusLabel = 'Cancelled'; }
+    else if (status == 'completed') { statusColor = AppTheme.primaryColor; statusLabel = 'Completed'; }
+    else { statusColor = AppTheme.successColor; statusLabel = 'Confirmed'; }
+
+    return ModernCard(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.zero,
+      child: Column(children: [
+        Row(children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
+            child: SizedBox(
+              width: 85, height: 115,
+              child: imageUrls.isNotEmpty
+                  ? Image.network(imageUrls.first, fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _imgPlaceholder(colorScheme))
+                  : _imgPlaceholder(colorScheme),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(
+                    child: Text(b['groundName'] ?? '',
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(statusLabel,
+                        style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.bold)),
+                  ),
+                ]),
+                const SizedBox(height: 2),
+                if ((b['groundCategory'] as String? ?? '').isNotEmpty)
+                  _infoRow(Icons.category_outlined, b['groundCategory'] ?? '', theme),
+                _infoRow(Icons.person_outline, b['userName'] ?? b['userEmail'] ?? '', theme),
+                _infoRow(Icons.calendar_today_outlined, b['date'] ?? '', theme),
+                _infoRow(Icons.access_time_outlined, b['slot'] ?? '', theme),
+                if (price != null)
+                  _infoRow(Icons.attach_money_rounded, 'PKR $price', theme,
+                      color: const Color(0xFF34C759)),
+              ]),
+            ),
+          ),
+          // Chat button — only for real user bookings
+          if (!isWalkIn && (b['userId'] as String? ?? '').isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: IconButton(
+                icon: const Icon(Icons.chat_bubble_outline_rounded,
+                    color: AppTheme.primaryColor, size: 20),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => BookingChatScreen(
+                      bookingId: b['id'], booking: b, isManager: true),
+                )),
+              ),
+            ),
+        ]),
+        // Confirm/Reject for pending user bookings
+        if (isPending)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: Row(children: [
+              Expanded(child: GradientButton(
+                text: 'Confirm',
+                icon: Icons.check_circle_outline_rounded,
+                gradient: const LinearGradient(colors: [Color(0xFF34C759), Color(0xFF28A745)]),
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                textStyle: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                onPressed: () async { await BookingService.confirmBooking(b['id']); },
+              )),
+              const SizedBox(width: 10),
+              Expanded(child: GradientButton(
+                text: 'Reject',
+                icon: Icons.cancel_outlined,
+                gradient: const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFDC2626)]),
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                textStyle: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                onPressed: () async { await BookingService.rejectBooking(b['id']); },
+              )),
+            ]),
+          ),
+        // Cancel for walk-in confirmed bookings
+        if (isWalkIn && status == 'confirmed')
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: GradientButton(
+              text: 'Cancel Booking',
+              icon: Icons.cancel_outlined,
+              gradient: const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFDC2626)]),
+              width: double.infinity, height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              textStyle: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    title: const Row(children: [
+                      Icon(Icons.cancel_outlined, color: Colors.red),
+                      SizedBox(width: 10), Text('Cancel Booking'),
+                    ]),
+                    content: Text('Cancel booking for ${b['userName'] ?? 'customer'}?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false),
+                          child: Text('No', style: TextStyle(color: Colors.grey[600]))),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Cancel'),
+                      ),
                     ],
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _bookings.where((b) => b['isTournament'] != true).length,
-                  itemBuilder: (_, i) {
-                    final regularBookings = _bookings.where((b) => b['isTournament'] != true).toList();
-                    final b = regularBookings[i];
-                    final imageUrls = (b['imageUrls'] as List?)?.cast<String>() ?? [];
-                    final status = b['status'] as String? ?? 'pending';
-                    final isPending = status == 'pending';
-
-                    Color statusColor;
-                    if (status == 'confirmed') statusColor = AppTheme.successColor;
-                    else if (status == 'rejected' || status == 'cancelled') statusColor = AppTheme.errorColor;
-                    else statusColor = AppTheme.warningColor;
-
-                    return ModernCard(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          Row(children: [
-                            ClipRRect(
-                              borderRadius: const BorderRadius.horizontal(
-                                  left: Radius.circular(20)),
-                              child: SizedBox(
-                                width: 80,
-                                height: 90,
-                                child: imageUrls.isNotEmpty
-                                    ? Image.network(imageUrls.first,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, _, _) =>
-                                            _imgPlaceholder(colorScheme))
-                                    : _imgPlaceholder(colorScheme),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(b['groundName'] ?? '',
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 15),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis),
-                                      const SizedBox(height: 3),
-                                      _row(Icons.person_outline,
-                                          b['userName'] ?? b['userEmail'] ?? '', theme),
-                                      _row(Icons.calendar_today_outlined,
-                                          b['date'] ?? '', theme),
-                                      _row(Icons.access_time_outlined,
-                                          b['slot'] ?? '', theme),
-                                      _row(Icons.payment_outlined,
-                                          b['payment'] ?? '', theme),
-                                    ]),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: IconButton(
-                                icon: const Icon(Icons.chat_bubble_outline_rounded,
-                                    color: AppTheme.primaryColor, size: 20),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => BookingChatScreen(
-                                        bookingId: b['id'],
-                                        booking: b,
-                                        isManager: true,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(right: 10),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                    color: statusColor.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(8)),
-                                child: Text(
-                                  status[0].toUpperCase() + status.substring(1),
-                                  style: TextStyle(
-                                      color: statusColor,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ),
-                          ]),
-                          // Confirm / Reject buttons for pending
-                          if (isPending)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                              child: Row(children: [
-                                Expanded(
-                                  child: GradientButton(
-                                    text: 'Confirm',
-                                    icon: Icons.check_circle_outline_rounded,
-                                    gradient: const LinearGradient(
-                                        colors: [Color(0xFF34C759), Color(0xFF28A745)]),
-                                    height: 40,
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 8),
-                                    textStyle: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold),
-                                    onPressed: () async {
-                                      await BookingService.confirmBooking(b['id']);
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: GradientButton(
-                                    text: 'Reject',
-                                    icon: Icons.cancel_outlined,
-                                    gradient: const LinearGradient(
-                                        colors: [Color(0xFFEF4444), Color(0xFFDC2626)]),
-                                    height: 40,
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 8),
-                                    textStyle: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold),
-                                    onPressed: () async {
-                                      await BookingService.rejectBooking(b['id']);
-                                    },
-                                  ),
-                                ),
-                              ]),
-                            ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                );
+                if (confirmed == true) await BookingService.cancelBooking(b['id']);
+              },
+            ),
+          ),
+      ]),
     );
   }
 
@@ -571,16 +622,15 @@ class _ManagerAllBookingsState extends State<ManagerAllBookings> {
       color: c.surfaceContainerHighest,
       child: Icon(Icons.sports, color: c.onSurfaceVariant, size: 32));
 
-  Widget _row(IconData icon, String text, ThemeData theme) => Padding(
+  Widget _infoRow(IconData icon, String text, ThemeData theme, {Color? color}) =>
+      Padding(
         padding: const EdgeInsets.only(top: 2),
         child: Row(children: [
-          Icon(icon, size: 12, color: AppTheme.primaryColor),
+          Icon(icon, size: 12, color: color ?? AppTheme.primaryColor),
           const SizedBox(width: 4),
-          Expanded(
-              child: Text(text,
-                  style: theme.textTheme.bodySmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis)),
+          Expanded(child: Text(text,
+              style: theme.textTheme.bodySmall?.copyWith(fontSize: 11, color: color),
+              maxLines: 1, overflow: TextOverflow.ellipsis)),
         ]),
       );
 }
