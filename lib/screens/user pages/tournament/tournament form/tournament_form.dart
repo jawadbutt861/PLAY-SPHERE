@@ -206,45 +206,100 @@ class _TournamentFormState extends State<TournamentForm> {
   }
 
   void _createSingleEliminationFixtures(List<String> teams) {
-    List<String> currentRound = List.from(teams);
-    currentRound.shuffle();
-    
+    List<String> currentRound = List.from(teams)..shuffle();
+
+    // Pre-calculate total rounds
+    int totalRounds = 0;
+    int cnt = currentRound.length;
+    while (cnt > 1) { cnt = (cnt / 2).ceil(); totalRounds++; }
+
     int round = 1;
     while (currentRound.length > 1) {
       List<String> nextRound = [];
-      
+      final roundsLeft = totalRounds - round;
+
+      String roundLabel;
+      String matchType;
+      if (roundsLeft == 0) { roundLabel = 'Final'; matchType = 'final'; }
+      else if (roundsLeft == 1) { roundLabel = 'Semi Final'; matchType = 'semi_final'; }
+      else if (roundsLeft == 2) { roundLabel = 'Quarter Final'; matchType = 'quarter_final'; }
+      else { roundLabel = 'Round $round'; matchType = 'regular'; }
+
       for (int i = 0; i < currentRound.length; i += 2) {
         if (i + 1 < currentRound.length) {
-          fixtures.add([
-            currentRound[i], 
-            currentRound[i + 1], 
-            'Round $round'
-          ]);
-          nextRound.add('Winner of ${currentRound[i]} vs ${currentRound[i + 1]}');
+          fixtures.add([currentRound[i], currentRound[i + 1], roundLabel, matchType]);
+          // Placeholder for next round — will be filled after result
+          nextRound.add('TBD');
         } else {
-          // Bye - team advances automatically
-          fixtures.add([currentRound[i], 'BYE', 'Round $round']);
+          // Bye — team advances directly
           nextRound.add(currentRound[i]);
         }
       }
-      
       currentRound = nextRound;
       round++;
     }
   }
 
   void _createDoubleEliminationFixtures(List<String> teams) {
-    // Winner's bracket
-    _createSingleEliminationFixtures(teams);
-    
-    // Add loser's bracket matches (simplified)
-    int losersMatches = (teams.length / 2).floor();
-    for (int i = 0; i < losersMatches; i++) {
-      fixtures.add(['Loser ${i + 1}', 'Loser ${i + 2}', 'Losers Bracket']);
+    final shuffled = List<String>.from(teams)..shuffle();
+
+    // ── Winners Bracket Round 1 ──
+    List<String> wNext = [];
+    List<String> lBracket = [];
+
+    for (int i = 0; i < shuffled.length; i += 2) {
+      if (i + 1 < shuffled.length) {
+        fixtures.add([shuffled[i], shuffled[i + 1], 'WB Round 1', 'regular']);
+        wNext.add('TBD');
+        lBracket.add('TBD');
+      } else {
+        wNext.add(shuffled[i]); // bye
+      }
     }
-    
-    // Grand Final
-    fixtures.add(['Winners Champion', 'Losers Champion', 'Grand Final']);
+
+    // ── Winners Bracket subsequent rounds ──
+    int wRound = 2;
+    int wTotal = 0;
+    int cnt = shuffled.length;
+    while (cnt > 1) { cnt = (cnt / 2).ceil(); wTotal++; }
+
+    while (wNext.length > 1) {
+      List<String> nextW = [];
+      final roundsLeft = wTotal - wRound;
+      String roundLabel = roundsLeft == 0 ? 'WB Final' : 'WB Round $wRound';
+      String matchType = roundsLeft == 0 ? 'semi_final' : 'regular';
+
+      for (int i = 0; i < wNext.length; i += 2) {
+        if (i + 1 < wNext.length) {
+          fixtures.add([wNext[i], wNext[i + 1], roundLabel, matchType]);
+          nextW.add('TBD');
+          lBracket.add('TBD');
+        } else {
+          nextW.add(wNext[i]);
+        }
+      }
+      wNext = nextW;
+      wRound++;
+    }
+
+    // ── Losers Bracket ──
+    int lRound = 1;
+    while (lBracket.length > 1) {
+      List<String> nextL = [];
+      for (int i = 0; i < lBracket.length; i += 2) {
+        if (i + 1 < lBracket.length) {
+          fixtures.add([lBracket[i], lBracket[i + 1], 'LB Round $lRound', 'regular']);
+          nextL.add('TBD');
+        } else {
+          nextL.add(lBracket[i]);
+        }
+      }
+      lBracket = nextL;
+      lRound++;
+    }
+
+    // ── Grand Final ──
+    fixtures.add(['TBD', 'TBD', 'Grand Final', 'grand_final']);
   }
 
   void _createRoundRobinFixtures(List<String> teams) {
@@ -316,16 +371,23 @@ class _TournamentFormState extends State<TournamentForm> {
           slotIndex++;
         }
         
-        // Determine match type for special rounds
-        String matchType = 'regular';
-        if (round.toLowerCase().contains('final')) {
-          if (round.toLowerCase().contains('grand')) {
+        // Use matchType from fixture[3] if available, else derive from round label
+        String matchType;
+        if (fixture.length >= 4 && fixture[3].isNotEmpty) {
+          matchType = fixture[3];
+        } else {
+          final roundLower = round.toLowerCase();
+          if (roundLower.contains('grand')) {
             matchType = 'grand_final';
-          } else {
+          } else if (roundLower.contains('final')) {
             matchType = 'final';
+          } else if (roundLower.contains('semi')) {
+            matchType = 'semi_final';
+          } else if (roundLower.contains('quarter')) {
+            matchType = 'quarter_final';
+          } else {
+            matchType = 'regular';
           }
-        } else if (round.toLowerCase().contains('semi')) {
-          matchType = 'semi_final';
         }
         
         matches.add({

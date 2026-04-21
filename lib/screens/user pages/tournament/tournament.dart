@@ -915,27 +915,21 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
 
   Color _getMatchTypeColor(String matchType) {
     switch (matchType) {
-      case 'grand_final':
-        return Colors.purple;
-      case 'final':
-        return Colors.red;
-      case 'semi_final':
-        return Colors.orange;
-      default:
-        return const Color(0xFF1A659E);
+      case 'grand_final':   return Colors.purple;
+      case 'final':         return Colors.red;
+      case 'semi_final':    return Colors.orange;
+      case 'quarter_final': return Colors.teal;
+      default:              return const Color(0xFF1A659E);
     }
   }
 
   String _getMatchTypeLabel(String matchType) {
     switch (matchType) {
-      case 'grand_final':
-        return 'GRAND FINAL';
-      case 'final':
-        return 'FINAL';
-      case 'semi_final':
-        return 'SEMI FINAL';
-      default:
-        return 'MATCH';
+      case 'grand_final': return 'GRAND FINAL';
+      case 'final':       return 'FINAL';
+      case 'semi_final':  return 'SEMI FINAL';
+      case 'quarter_final': return 'QTR FINAL';
+      default:            return 'MATCH';
     }
   }
 
@@ -1208,8 +1202,13 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
     );
   }
 
-  /// "Winner of X vs Y" / "Loser N" ko actual team name mein resolve karo
+  /// Resolve team name — TBD shows as "TBD", actual names show as-is
   String _resolveTeamName(String name, List<Map<String, dynamic>> allMatches) {
+    if (name.isEmpty) return '?';
+    if (name == 'TBD') return 'TBD';
+    if (name == 'BYE') return 'BYE';
+
+    // Legacy: "Winner of X vs Y"
     if (name.startsWith('Winner of ')) {
       final vs = name.replaceFirst('Winner of ', '');
       final parts = vs.split(' vs ');
@@ -1222,8 +1221,10 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
           return match['winner'] as String;
         }
       }
-      return name; // still pending
+      return 'TBD';
     }
+
+    // Legacy: "Loser N"
     if (name.startsWith('Loser ')) {
       final idx = int.tryParse(name.replaceFirst('Loser ', ''));
       if (idx != null && idx <= allMatches.length) {
@@ -1235,8 +1236,47 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
           return w == t1 ? t2 : t1;
         }
       }
-      return name;
+      return 'TBD';
     }
+
+    // New W(...) / L(...) patterns
+    final wNew = RegExp(r'^W\((.+)\)$').firstMatch(name);
+    if (wNew != null) {
+      final label = wNew.group(1)!;
+      final roundLabel = label.replaceAll(RegExp(r'\s*M\d+$'), '').trim();
+      final matchNum = int.tryParse(label.split('M').last) ?? 1;
+      final roundMatches = allMatches
+          .where((m) => (m['round'] as String? ?? '') == roundLabel)
+          .toList();
+      if (matchNum <= roundMatches.length) {
+        final m = roundMatches[matchNum - 1];
+        if (m['status'] == 'completed' && m['winner'] != null) {
+          return m['winner'] as String;
+        }
+      }
+      return 'TBD';
+    }
+
+    final lNew = RegExp(r'^L\((.+)\)$').firstMatch(name);
+    if (lNew != null) {
+      final label = lNew.group(1)!;
+      final roundLabel = label.replaceAll(RegExp(r'\s*M\d+$'), '').trim();
+      final matchNum = int.tryParse(label.split('M').last) ?? 1;
+      final roundMatches = allMatches
+          .where((m) => (m['round'] as String? ?? '') == roundLabel)
+          .toList();
+      if (matchNum <= roundMatches.length) {
+        final m = roundMatches[matchNum - 1];
+        if (m['status'] == 'completed') {
+          final t1 = m['team1'] as String? ?? '';
+          final t2 = m['team2'] as String? ?? '';
+          final w = m['winner'] as String? ?? '';
+          if (w.isNotEmpty) return w == t1 ? t2 : t1;
+        }
+      }
+      return 'TBD';
+    }
+
     return name;
   }
 

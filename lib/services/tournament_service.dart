@@ -27,6 +27,7 @@ class TournamentService {
           'team1': row.isNotEmpty ? row[0] : '',
           'team2': row.length > 1 ? row[1] : '',
           'round': row.length > 2 ? row[2] : '',
+          'matchType': row.length > 3 ? row[3] : 'regular',
         };
       }).toList();
 
@@ -122,6 +123,9 @@ class TournamentService {
       if (result == 'team1') { winner = team1; match['winner'] = team1; }
       else if (result == 'team2') { winner = team2; match['winner'] = team2; }
 
+      // Determine loser
+      final loser = winner == team1 ? team2 : (winner == team2 ? team1 : null);
+
       // Update points table
       final pointsTable = Map<String, dynamic>.from(data['pointsTable'] as Map? ?? {});
 
@@ -153,6 +157,45 @@ class TournamentService {
       } else if (result == 'abandoned') {
         updateTeam(team1, abandoned: true);
         updateTeam(team2, abandoned: true);
+      }
+
+      // Fill TBD slots in subsequent matches
+      // Find the next match that has 'TBD' and fill with winner/loser
+      if (winner != null) {
+        // Count how many matches in this round came before current match
+        final currentRound = match['round'] as String? ?? '';
+        final roundMatches = matches
+            .where((m) => (m['round'] as String? ?? '') == currentRound)
+            .toList();
+        final posInRound = roundMatches.indexOf(match);
+
+        // Find next round matches with TBD — fill winner
+        int tbdFilled = 0;
+        for (final m in matches) {
+          if (m['status'] != 'scheduled') continue;
+          if (m['team1'] == 'TBD' && tbdFilled == posInRound) {
+            m['team1'] = winner;
+            tbdFilled = -1;
+            break;
+          } else if (m['team2'] == 'TBD' && tbdFilled == posInRound) {
+            m['team2'] = winner;
+            tbdFilled = -1;
+            break;
+          }
+          if (m['team1'] == 'TBD' || m['team2'] == 'TBD') tbdFilled++;
+        }
+
+        // Fill loser into LB TBD (for double elimination)
+        if (loser != null) {
+          for (final m in matches) {
+            if (m['status'] != 'scheduled') continue;
+            if ((m['round'] as String? ?? '').startsWith('LB') &&
+                (m['team1'] == 'TBD' || m['team2'] == 'TBD')) {
+              if (m['team1'] == 'TBD') { m['team1'] = loser; break; }
+              if (m['team2'] == 'TBD') { m['team2'] = loser; break; }
+            }
+          }
+        }
       }
 
       // Check if all current matches done
