@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../main.dart';
 
@@ -88,7 +90,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       await Future.delayed(const Duration(milliseconds: 800));
       _textController.forward();
 
-      // Navigate after animations — onboarding check
       await Future.delayed(const Duration(milliseconds: 2500));
       if (!mounted) return;
 
@@ -98,15 +99,41 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             .timeout(const Duration(seconds: 3));
         done = prefs.getBool('onboarding_done') ?? false;
       } catch (_) {
-        // SharedPreferences failed or timed out — go to onboarding
         done = false;
       }
 
+      if (!mounted) return;
+
+      // If onboarding not done, go there first
+      if (!done) {
+        Navigator.of(context).pushReplacementNamed('/Onboarding');
+        return;
+      }
+
+      // Check if user already logged in — navigate to correct role screen
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        try {
+          final doc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .get()
+              .timeout(const Duration(seconds: 4));
+          final role = doc.data()?['role'] as String? ?? 'user';
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed(
+                role == 'manager' ? '/ManagerHome' : '/UserMain');
+          }
+          return;
+        } catch (_) {
+          // Firestore timeout — go to role selection
+        }
+      }
+
       if (mounted) {
-        Navigator.of(context).pushReplacementNamed(done ? '/' : '/Onboarding');
+        Navigator.of(context).pushReplacementNamed('/');
       }
     } catch (e) {
-      // Fallback: if anything goes wrong, still navigate
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/Onboarding');
       }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../main.dart';
 import '../../services/auth_service.dart';
 
@@ -27,7 +28,6 @@ class _UserLoginState extends State<UserLogin> {
 
   Future<void> _handleLogin() async {
     if (!formkey.currentState!.validate()) return;
-
     setState(() => isLoading = true);
 
     final userCredential = await _authService.signInWithEmail(
@@ -36,20 +36,76 @@ class _UserLoginState extends State<UserLogin> {
       context: context,
     );
 
-    setState(() => isLoading = false);
-
-    if (userCredential != null && mounted) {
-      Navigator.pushReplacementNamed(context, "/UserMain");
+    if (userCredential == null) {
+      setState(() => isLoading = false);
+      return;
     }
+
+    // Role check — user account manager login mein use nahi ho sakta
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userCredential.user!.uid)
+        .get();
+    final role = doc.data()?['role'] as String? ?? 'user';
+
+    if (role != 'user') {
+      await _authService.signOut();
+      if (mounted) {
+        setState(() => isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Row(children: [
+            Icon(Icons.error_outline, color: Colors.white),
+            SizedBox(width: 10),
+            Expanded(child: Text('This account is registered as a Manager. Please use Manager login.')),
+          ]),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ));
+      }
+      return;
+    }
+
+    setState(() => isLoading = false);
+    if (mounted) Navigator.pushReplacementNamed(context, "/UserMain");
   }
 
   Future<void> _handleGoogleSignIn() async {
     setState(() => isLoading = true);
     final userCredential = await _authService.signInWithGoogle(context: context);
-    setState(() => isLoading = false);
-    if (userCredential != null && mounted) {
-      Navigator.pushReplacementNamed(context, "/UserMain");
+
+    if (userCredential == null) {
+      setState(() => isLoading = false);
+      return;
     }
+
+    // Role check
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userCredential.user!.uid)
+        .get();
+    final role = doc.data()?['role'] as String? ?? 'user';
+
+    if (role == 'manager') {
+      await _authService.signOut();
+      if (mounted) {
+        setState(() => isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Row(children: [
+            Icon(Icons.error_outline, color: Colors.white),
+            SizedBox(width: 10),
+            Expanded(child: Text('This account is registered as a Manager. Please use Manager login.')),
+          ]),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ));
+      }
+      return;
+    }
+
+    setState(() => isLoading = false);
+    if (mounted) Navigator.pushReplacementNamed(context, "/UserMain");
   }
 
   Future<void> _handleForgotPassword() async {

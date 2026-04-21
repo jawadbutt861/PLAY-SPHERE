@@ -621,9 +621,10 @@ class _ProfileState extends State<Profile> {
   }
 
   void _showLogoutDialog() {
+    final parentContext = context; // Capture parent context
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
@@ -635,19 +636,17 @@ class _ProfileState extends State<Profile> {
         content: const Text('Are you sure you want to logout?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
           ),
           GradientButton(
             text: 'Logout',
             onPressed: () async {
-              Navigator.pop(context); // close dialog
-
-              // Sign out from Firebase
+              Navigator.pop(dialogContext); // close dialog
               await _authService.signOut();
-
               if (mounted) {
-                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                Navigator.pushNamedAndRemoveUntil(
+                    parentContext, '/', (route) => false);
               }
             },
             height: 44,

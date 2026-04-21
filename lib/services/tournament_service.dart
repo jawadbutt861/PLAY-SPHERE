@@ -8,7 +8,6 @@ class TournamentService {
   /// Tournament Firestore mein save karo
   static Future<String?> createTournament(Map<String, dynamic> data) async {
     try {
-      // bookedGrounds — nested ground object flatten karo
       final bookedGrounds = (data['bookedGrounds'] as List? ?? []).map((b) {
         final ground = b['ground'] as Map<String, dynamic>? ?? {};
         return {
@@ -22,7 +21,6 @@ class TournamentService {
         };
       }).toList();
 
-      // fixtures: List<List<String>> → List<Map> (Firestore nested arrays support nahi karta)
       final fixtures = (data['fixtures'] as List? ?? []).map((f) {
         final row = (f as List).cast<String>();
         return {
@@ -32,19 +30,31 @@ class TournamentService {
         };
       }).toList();
 
-      // matches mein koi nested array nahi hona chahiye — safe cast
       final matches = (data['matches'] as List? ?? []).map((m) {
         final map = Map<String, dynamic>.from(m as Map);
-        // Remove any non-serializable fields
-        map.remove('ground'); // agar koi ground object ho
+        map.remove('ground');
         return map;
       }).toList();
+
+      // Initialize points table for all teams
+      final teamNames = (data['teamNames'] as List?)?.cast<String>() ?? [];
+      final pointsTable = <String, dynamic>{};
+      for (final team in teamNames) {
+        if (team != 'BYE') {
+          pointsTable[team] = {
+            'played': 0, 'won': 0, 'drawn': 0, 'lost': 0,
+            'abandoned': 0, 'goalsFor': 0, 'goalsAgainst': 0, 'points': 0,
+          };
+        }
+      }
 
       final doc = await _db.collection(_col).add({
         ...data,
         'bookedGrounds': bookedGrounds,
         'fixtures': fixtures,
         'matches': matches,
+        'pointsTable': pointsTable,
+        'status': 'active',
         'createdAt': FieldValue.serverTimestamp(),
       });
       debugPrint('TournamentService: Created ${doc.id}');
@@ -55,7 +65,7 @@ class TournamentService {
     }
   }
 
-  /// User ke tournaments (real-time) — client-side sort to avoid composite index
+  /// User ke tournaments (real-time)
   static Stream<List<Map<String, dynamic>>> getUserTournaments(String userId) {
     return _db
         .collection(_col)
@@ -70,10 +80,8 @@ class TournamentService {
         if (ta == null) return 1;
         if (tb == null) return -1;
         try {
-          // Firestore Timestamp
           return (tb as dynamic).toDate().compareTo((ta as dynamic).toDate());
         } catch (_) {
-          // String fallback
           return tb.toString().compareTo(ta.toString());
         }
       });
@@ -81,7 +89,138 @@ class TournamentService {
     });
   }
 
-  /// Tournament update karo (match results etc)
+  /// Match result update karo — Firestore mein points bhi update karo
+  static Future<void> updateMatchResult({
+    required String tournamentId,
+    required int matchIndex,
+    required String result, // 'team1' | 'team2' | 'draw' | 'abandoned'
+    required String team1,
+    required String team2,
+    int? team1Score,
+    int? team2Score,
+  }) async {
+    try {
+      final docRef = _db.collection(_col).doc(tournamentId);
+      final doc = await docRef.get();
+      if (!doc.exists) return;
+
+      final data = doc.data()!;
+      final matches = List<Map<String, dynamic>>.from(
+          (data['matches'] as List? ?? []).map((m) => Map<String, dynamic>.from(m as Map)));
+
+      if (matchIndex >= matches.length) return;
+
+      // Update match
+      final match = matches[matchIndex];
+      match['status'] = 'completed';
+      match['result'] = result;
+      match['completedAt'] = DateTime.now().toIso8601String();
+      if (team1Score != null) match['team1Score'] = team1Score;
+      if (team2Score != null) match['team2Score'] = team2Score;
+
+      String? winner;
+      if (result == 'team1') { winner = team1; match['winner'] = team1; }
+      else if (result == 'team2') { winner = team2; match['winner'] = team2; }
+
+      // Update points table
+      final pointsTable = Map<String, dynamic>.from(data['pointsTable'] as Map? ?? {});
+
+      void updateTeam(String team, {bool won = false, bool drawn = false, bool lost = false, bool abandoned = false, int gf = 0, int ga = 0}) {
+        if (team == 'BYE' || team.isEmpty) return;
+        final entry = Map<String, dynamic>.from(pointsTable[team] as Map? ?? {
+          'played': 0, 'won': 0, 'drawn': 0, 'lost': 0,
+          'abandoned': 0, 'goalsFor': 0, 'goalsAgainst': 0, 'points': 0,
+        });
+        entry['played'] = (entry['played'] as int? ?? 0) + 1;
+        if (won) { entry['won'] = (entry['won'] as int? ?? 0) + 1; entry['points'] = (entry['points'] as int? ?? 0) + 3; }
+        if (drawn) { entry['drawn'] = (entry['drawn'] as int? ?? 0) + 1; entry['points'] = (entry['points'] as int? ?? 0) + 1; }
+        if (lost) { entry['lost'] = (entry['lost'] as int? ?? 0) + 1; }
+        if (abandoned) { entry['abandoned'] = (entry['abandoned'] as int? ?? 0) + 1; entry['points'] = (entry['points'] as int? ?? 0) + 1; }
+        entry['goalsFor'] = (entry['goalsFor'] as int? ?? 0) + gf;
+        entry['goalsAgainst'] = (entry['goalsAgainst'] as int? ?? 0) + ga;
+        pointsTable[team] = entry;
+      }
+
+      if (result == 'team1') {
+        updateTeam(team1, won: true, gf: team1Score ?? 0, ga: team2Score ?? 0);
+        updateTeam(team2, lost: true, gf: team2Score ?? 0, ga: team1Score ?? 0);
+      } else if (result == 'team2') {
+        updateTeam(team2, won: true, gf: team2Score ?? 0, ga: team1Score ?? 0);
+        updateTeam(team1, lost: true, gf: team1Score ?? 0, ga: team2Score ?? 0);
+      } else if (result == 'draw') {
+        updateTeam(team1, drawn: true, gf: team1Score ?? 0, ga: team2Score ?? 0);
+        updateTeam(team2, drawn: true, gf: team2Score ?? 0, ga: team1Score ?? 0);
+      } else if (result == 'abandoned') {
+        updateTeam(team1, abandoned: true);
+        updateTeam(team2, abandoned: true);
+      }
+
+      // Check if all current matches done
+      final allDone = matches.every((m) => m['status'] == 'completed');
+
+      // Round Robin: jab saare group matches done ho jayein, top 2 ka Final add karo
+      final format = data['format'] as String? ?? '';
+      bool finalAdded = false;
+      if (allDone && format == 'Round Robin') {
+        // Check if final already exists
+        final finalExists = matches.any((m) =>
+            (m['matchType'] as String? ?? '') == 'final');
+        if (!finalExists) {
+          // Sort pointsTable to get top 2
+          final sortedTeams = pointsTable.entries.map((e) {
+            final d = Map<String, dynamic>.from(e.value as Map? ?? {});
+            return {
+              'team': e.key,
+              'points': d['points'] as int? ?? 0,
+              'goalDifference': (d['goalsFor'] as int? ?? 0) - (d['goalsAgainst'] as int? ?? 0),
+              'goalsFor': d['goalsFor'] as int? ?? 0,
+            };
+          }).toList()
+            ..sort((a, b) {
+              final pts = (b['points'] as int).compareTo(a['points'] as int);
+              if (pts != 0) return pts;
+              final gd = (b['goalDifference'] as int).compareTo(a['goalDifference'] as int);
+              if (gd != 0) return gd;
+              return (b['goalsFor'] as int).compareTo(a['goalsFor'] as int);
+            });
+
+          if (sortedTeams.length >= 2) {
+            final top1 = sortedTeams[0]['team'] as String;
+            final top2 = sortedTeams[1]['team'] as String;
+            matches.add({
+              'id': matches.length + 1,
+              'team1': top1,
+              'team2': top2,
+              'round': 'Final',
+              'matchType': 'final',
+              'date': '',
+              'time': '',
+              'ground': '',
+              'status': 'scheduled',
+              'result': null,
+              'winner': null,
+              'createdAt': DateTime.now().toIso8601String(),
+            });
+            finalAdded = true;
+          }
+        }
+      }
+
+      await docRef.update({
+        'matches': matches,
+        'pointsTable': pointsTable,
+        if (winner != null) 'currentLeader': winner,
+        // Only mark completed if final also done (or not round robin)
+        if (allDone && !finalAdded && format != 'Round Robin') 'status': 'completed',
+        if (allDone && !finalAdded && format == 'Round Robin') 'status': 'completed',
+      });
+    } catch (e) {
+      debugPrint('TournamentService updateMatchResult ERROR: $e');
+      rethrow;
+    }
+  }
+
+  /// Tournament update karo
   static Future<void> updateTournament(
       String tournamentId, Map<String, dynamic> data) async {
     await _db.collection(_col).doc(tournamentId).update(data);
@@ -90,7 +229,6 @@ class TournamentService {
   /// Tournament delete karo aur uski saari bookings cancel karo
   static Future<void> deleteTournament(String tournamentId, String creatorUid) async {
     try {
-      // Tournament ki bookings fetch karo — userId filter se (creator ne banai thi)
       final bookingsSnap = await _db
           .collection('bookings')
           .where('tournamentId', isEqualTo: tournamentId)
@@ -101,13 +239,17 @@ class TournamentService {
       for (final doc in bookingsSnap.docs) {
         batch.update(doc.reference, {'status': 'cancelled'});
       }
-      // Tournament document delete karo
       batch.delete(_db.collection(_col).doc(tournamentId));
       await batch.commit();
-      debugPrint('TournamentService: Deleted $tournamentId, cancelled ${bookingsSnap.docs.length} bookings');
     } catch (e) {
       debugPrint('TournamentService deleteTournament ERROR: $e');
       rethrow;
     }
+  }
+
+  /// Single tournament real-time stream
+  static Stream<Map<String, dynamic>> getTournamentStream(String tournamentId) {
+    return _db.collection(_col).doc(tournamentId).snapshots().map((s) =>
+        s.exists ? {...s.data()!, 'id': s.id} : <String, dynamic>{});
   }
 }

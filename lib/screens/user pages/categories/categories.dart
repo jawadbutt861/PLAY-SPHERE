@@ -638,6 +638,7 @@ class _BookingDialogState extends State<_BookingDialog> {
   List<String> _bookedSlots = [];
   bool _loadingSlots = false;
   bool _showSummary = false;
+  bool _placingOrder = false;
 
   List<String> _getSlots() {
     final cat = widget.ground['category'] ?? '';
@@ -665,18 +666,33 @@ class _BookingDialogState extends State<_BookingDialog> {
   }
 
   bool _isDisabled(String slot) {
-    final cat = widget.ground['category'] ?? '';
     if (_bookedSlots.contains(slot)) return true;
+    final cat = widget.ground['category'] ?? '';
     if (cat == 'Cricket') {
       if (slot == 'Full-day') {
         return _bookedSlots.contains('9am to 2pm') ||
-            _bookedSlots.contains('2pm to 6pm') ||
-            _slot == '9am to 2pm' || _slot == '2pm to 6pm';
+            _bookedSlots.contains('2pm to 6pm');
       } else {
-        return _bookedSlots.contains('Full-day') || _slot == 'Full-day';
+        return _bookedSlots.contains('Full-day');
       }
     }
     return false;
+  }
+
+  void _selectSlot(String slot) {
+    final cat = widget.ground['category'] ?? '';
+    setState(() {
+      if (cat == 'Cricket') {
+        if (slot == 'Full-day') {
+          _slot = slot; // auto-deselects partials since _slot changes
+        } else {
+          if (_slot == 'Full-day') _slot = null;
+          _slot = slot;
+        }
+      } else {
+        _slot = slot;
+      }
+    });
   }
 
   int? _calcPrice() {
@@ -700,14 +716,18 @@ class _BookingDialogState extends State<_BookingDialog> {
   }
 
   void _placeOrder() async {
+    if (_placingOrder) return;
+    setState(() => _placingOrder = true);
     final dk = _date!.toIso8601String().split('T')[0];
     final user = FirebaseAuth.instance.currentUser;
     final g = widget.ground;
+    final managerId = g['managerId'] as String? ?? '';
+
     final bookingId = await BookingService.createBooking(
       groundId: g['id'] ?? '',
       groundName: g['name'] ?? '',
       groundCategory: g['category'] ?? '',
-      managerId: g['managerId'] ?? '',
+      managerId: managerId,
       userId: user?.uid ?? '',
       userEmail: user?.email ?? '',
       userName: user?.displayName ?? user?.email ?? '',
@@ -717,28 +737,67 @@ class _BookingDialogState extends State<_BookingDialog> {
       imageUrls: (g['imageUrls'] as List?)?.cast<String>() ?? [],
       price: _calcPrice(),
     );
+    if (!mounted || bookingId == null) return;
+
+    // Fetch manager payment info immediately
+    Map<String, dynamic> paymentInfo = {};
+    if (managerId.isNotEmpty) {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(managerId)
+            .get();
+        if (doc.exists) {
+          final pi = doc.data()?['paymentInfo'];
+          if (pi is Map) paymentInfo = Map<String, dynamic>.from(pi);
+        }
+      } catch (_) {}
+    }
+
+    // Send system welcome + payment card to chat
+    final chatCol = FirebaseFirestore.instance
+        .collection('bookings')
+        .doc(bookingId)
+        .collection('chat');
+
+    await chatCol.add({
+      'text': '🎉 Booking request sent! Waiting for manager approval.',
+      'senderId': 'system',
+      'senderName': 'System',
+      'isSystem': true,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    await chatCol.add({
+      'senderId': 'system',
+      'senderName': 'System',
+      'isManager': true,
+      'isPaymentCard': true,
+      'paymentInfo': paymentInfo,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
     if (!mounted) return;
     Navigator.pop(context);
-    if (bookingId != null) {
-      Navigator.push(
-        widget.outerContext,
-        MaterialPageRoute(
-          builder: (_) => BookingChatScreen(
-            bookingId: bookingId,
-            booking: {
-              'groundName': g['name'] ?? '',
-              'groundCategory': g['category'] ?? '',
-              'date': dk,
-              'slot': _slot!,
-              'payment': 'Pay at Venue',
-              'price': _calcPrice(),
-              'status': 'pending',
-            },
-            isManager: false,
-          ),
+    Navigator.push(
+      widget.outerContext,
+      MaterialPageRoute(
+        builder: (_) => BookingChatScreen(
+          bookingId: bookingId,
+          booking: {
+            'groundName': g['name'] ?? '',
+            'groundCategory': g['category'] ?? '',
+            'date': dk,
+            'slot': _slot!,
+            'payment': 'Pay at Venue',
+            'price': _calcPrice(),
+            'managerId': managerId,
+            'status': 'pending',
+          },
+          isManager: false,
         ),
-      );
-    }
+      ),
+    );
   }
 
   @override
@@ -802,30 +861,44 @@ class _BookingDialogState extends State<_BookingDialog> {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: GradientButton(
-                text: _showSummary ? 'Place Order' : 'Review Order',
-                icon: _showSummary ? Icons.check_circle_outline : Icons.arrow_forward_rounded,
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                textStyle: const TextStyle(
-                    color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                onPressed: () {
-                  if (_showSummary) {
-                    _placeOrder();
-                  } else {
-                    if (_date == null || _slot == null) {
-                      ScaffoldMessenger.of(widget.outerContext).showSnackBar(SnackBar(
-                        content: const Text('Please select date and slot'),
-                        backgroundColor: AppTheme.warningColor,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ));
-                      return;
-                    }
-                    setState(() => _showSummary = true);
-                  }
-                },
-              ),
+              child: _placingOrder
+                  ? Container(
+                      height: 44,
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 22, height: 22,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2.5, color: Colors.white),
+                        ),
+                      ),
+                    )
+                  : GradientButton(
+                      text: _showSummary ? 'Place Order' : 'Review Order',
+                      height: 44,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      textStyle: const TextStyle(
+                          color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      onPressed: () {
+                        if (_showSummary) {
+                          _placeOrder();
+                        } else {
+                          if (_date == null || _slot == null) {
+                            ScaffoldMessenger.of(widget.outerContext).showSnackBar(SnackBar(
+                              content: const Text('Please select date and slot'),
+                              backgroundColor: AppTheme.warningColor,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ));
+                            return;
+                          }
+                          setState(() => _showSummary = true);
+                        }
+                      },
+                    ),
             ),
           ]),
         ),
@@ -877,12 +950,12 @@ class _BookingDialogState extends State<_BookingDialog> {
               dense: true,
               leading: RadioGroup<String>(
                 groupValue: _slot,
-                onChanged: disabled ? (v) {} : (v) => setState(() => _slot = v),
+                onChanged: disabled ? (v) {} : (v) => _selectSlot(slot),
                 child: Radio<String>(value: slot),
               ),
               title: Text(label,
                   style: TextStyle(color: disabled ? Colors.grey : null, fontSize: 13)),
-              onTap: disabled ? null : () => setState(() => _slot = slot),
+              onTap: disabled ? null : () => _selectSlot(slot),
             );
           }),
       ],

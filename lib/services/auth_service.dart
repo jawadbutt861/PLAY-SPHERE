@@ -42,7 +42,10 @@ class AuthService {
   }
 
   // ── Google Sign-In ────────────────────────────────────────
-  Future<UserCredential?> signInWithGoogle({required BuildContext context}) async {
+  Future<UserCredential?> signInWithGoogle({
+    required BuildContext context,
+    String role = 'user',
+  }) async {
     if (!RateLimiter.allow('google_signin')) {
       final secs = RateLimiter.cooldownRemaining('google_signin');
       _showErrorSnackBar(context, 'Too many attempts. Try again in ${secs}s.');
@@ -67,7 +70,7 @@ class AuthService {
           'fullName': user.displayName ?? '',
           'email': user.email ?? '',
           'mobile': '',
-          'role': 'user',
+          'role': role,
           'createdAt': FieldValue.serverTimestamp(),
         });
       }
