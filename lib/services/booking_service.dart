@@ -41,10 +41,10 @@ class BookingService {
         // Walk-in bookings are directly confirmed; user bookings start as pending
         'status': isWalkIn ? 'confirmed' : 'pending',
         'isWalkIn': isWalkIn,
-        if (price != null) 'price': price,
-        if (tournamentId != null) 'tournamentId': tournamentId,
-        if (tournamentName != null) 'tournamentName': tournamentName,
-        if (tournamentId != null) 'isTournament': true,
+        'price': price,
+        'tournamentId': tournamentId,
+        'tournamentName': tournamentName,
+        'isTournament': tournamentId != null ? true : null,
         'createdAt': FieldValue.serverTimestamp(),
       });
 

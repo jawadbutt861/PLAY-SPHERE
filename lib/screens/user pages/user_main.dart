@@ -192,9 +192,10 @@ class _UserMainScaffold extends StatelessWidget {
               )
             : index == 2
                 ? ModernAppBar(
-                    title: ' ',
-                    leading: BackButton(
-                      color: Colors.white,
+                    title: 'Your Bookings',
+                    gradient: AppTheme.primaryGradient,
+                    leading: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: () => onTabTapped(0),
                     ),
                   )

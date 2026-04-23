@@ -149,10 +149,11 @@ class _BookingDialogState extends State<_BookingDialog> {
     }
 
     // Send system welcome message + payment card to chat
+    final chatId = BookingChatScreen.chatId(user?.uid ?? '', managerId);
     final chatCol = FirebaseFirestore.instance
-        .collection('bookings')
-        .doc(bookingId)
-        .collection('chat');
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages');
 
     await chatCol.add({
       'text': '🎉 Booking request sent! Waiting for manager approval.',
@@ -186,6 +187,7 @@ class _BookingDialogState extends State<_BookingDialog> {
             'payment': 'Pay at Venue',
             'price': _calcPrice(),
             'managerId': managerId,
+            'userId': user?.uid ?? '',
             'status': 'pending',
           },
           isManager: false,

@@ -382,7 +382,6 @@ class _ManagerProfileState extends State<ManagerProfile> {
   }
 
   void _showLogoutDialog() {
-    final parentContext = context;
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -407,7 +406,7 @@ class _ManagerProfileState extends State<ManagerProfile> {
               await _authService.signOut();
               if (mounted) {
                 Navigator.pushNamedAndRemoveUntil(
-                    parentContext, '/', (route) => false);
+                    context, '/', (route) => false);
               }
             },
             gradient: const LinearGradient(

@@ -1481,10 +1481,15 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> with Tick
                 final t = e.value;
                 final gd = t['goalDifference'] as int;
                 Color bg;
-                if (i == 0) bg = Colors.amber.withValues(alpha: 0.12);
-                else if (i < 3 && isRoundRobin) bg = Colors.green.withValues(alpha: 0.08);
-                else if (i >= standings.length - 2 && isRoundRobin) bg = Colors.red.withValues(alpha: 0.06);
-                else bg = i.isEven ? colorScheme.surface : colorScheme.surfaceContainerHighest;
+                if (i == 0) {
+                  bg = Colors.amber.withValues(alpha: 0.12);
+                } else if (i < 3 && isRoundRobin) {
+                  bg = Colors.green.withValues(alpha: 0.08);
+                } else if (i >= standings.length - 2 && isRoundRobin) {
+                  bg = Colors.red.withValues(alpha: 0.06);
+                } else {
+                  bg = i.isEven ? colorScheme.surface : colorScheme.surfaceContainerHighest;
+                }
 
                 return Container(
                   color: bg,

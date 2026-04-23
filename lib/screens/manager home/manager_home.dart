@@ -414,30 +414,31 @@ class _ManagerAllBookingsState extends State<ManagerAllBookings>
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
+      appBar: ModernAppBar(
+        title: 'Regular Bookings',
+        gradient: AppTheme.secondaryGradient,
+      ),
       body: Column(children: [
-        // Tab bar — same style as user booking screen
+        // Tab bar
         Container(
           decoration: const BoxDecoration(gradient: AppTheme.secondaryGradient),
-          child: SafeArea(
-            bottom: false,
-            child: TabBar(
-              controller: _tabController,
-              indicatorColor: Colors.white,
-              indicatorWeight: 3,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white70,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w600),
-              tabs: [
-                Tab(
-                  icon: const Icon(Icons.event_available_rounded),
-                  text: 'Regular Bookings (${userBookings.length})',
-                ),
-                Tab(
-                  icon: const Icon(Icons.person_add_rounded),
-                  text: 'Book for Customer (${walkIn.length})',
-                ),
-              ],
-            ),
+          child: TabBar(
+            controller: _tabController,
+            indicatorColor: Colors.white,
+            indicatorWeight: 3,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+            tabs: [
+              Tab(
+                icon: const Icon(Icons.event_available_rounded),
+                text: 'Regular Bookings (${userBookings.length})',
+              ),
+              Tab(
+                icon: const Icon(Icons.person_add_rounded),
+                text: 'Book for Customer (${walkIn.length})',
+              ),
+            ],
           ),
         ),
         Expanded(
@@ -480,14 +481,17 @@ class _ManagerAllBookingsState extends State<ManagerAllBookings>
     final status = b['status'] as String? ?? 'confirmed';
     final isPending = status == 'pending' && !isWalkIn;
     final isCancelled = status == 'cancelled';
+    final isRejected = status == 'rejected';
+    final isCompleted = status == 'completed';
+    final canDelete = isCancelled || isRejected || isCompleted;
     final price = b['price'];
 
     Color statusColor;
     String statusLabel;
     if (status == 'pending') { statusColor = AppTheme.warningColor; statusLabel = 'Pending'; }
-    else if (status == 'rejected') { statusColor = AppTheme.errorColor; statusLabel = 'Rejected'; }
+    else if (isRejected) { statusColor = AppTheme.errorColor; statusLabel = 'Rejected'; }
     else if (isCancelled) { statusColor = AppTheme.errorColor; statusLabel = 'Cancelled'; }
-    else if (status == 'completed') { statusColor = AppTheme.primaryColor; statusLabel = 'Completed'; }
+    else if (isCompleted) { statusColor = AppTheme.primaryColor; statusLabel = 'Completed'; }
     else { statusColor = AppTheme.successColor; statusLabel = 'Confirmed'; }
 
     return ModernCard(
@@ -538,19 +542,28 @@ class _ManagerAllBookingsState extends State<ManagerAllBookings>
               ]),
             ),
           ),
-          // Chat button — only for real user bookings
-          if (!isWalkIn && (b['userId'] as String? ?? '').isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: IconButton(
-                icon: const Icon(Icons.chat_bubble_outline_rounded,
-                    color: AppTheme.primaryColor, size: 20),
-                onPressed: () => Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => BookingChatScreen(
-                      bookingId: b['id'], booking: b, isManager: true),
-                )),
-              ),
-            ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Chat button — only for real user bookings
+              if (!isWalkIn && (b['userId'] as String? ?? '').isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.chat_bubble_outline_rounded,
+                      color: AppTheme.primaryColor, size: 20),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => BookingChatScreen(
+                        bookingId: b['id'], booking: b, isManager: true),
+                  )),
+                ),
+              // Delete button for cancelled/rejected/completed
+              if (canDelete)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded,
+                      color: Colors.red, size: 20),
+                  onPressed: () => _deleteBooking(b),
+                ),
+            ],
+          ),
         ]),
         // Confirm/Reject for pending user bookings
         if (isPending)
@@ -616,6 +629,55 @@ class _ManagerAllBookingsState extends State<ManagerAllBookings>
           ),
       ]),
     );
+  }
+
+  Future<void> _deleteBooking(Map<String, dynamic> b) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.delete_outline_rounded, color: Colors.red),
+          SizedBox(width: 10), Text('Delete Booking'),
+        ]),
+        content: const Text('Remove this booking from your list?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('No', style: TextStyle(color: Colors.grey[600])),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      try {
+        final id = b['id'] as String? ?? '';
+        if (id.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Error: Booking ID not found'), backgroundColor: Colors.red));
+          }
+          return;
+        }
+        await BookingService.deleteBooking(id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Booking deleted'), backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating));
+        }
+      }
+    }
   }
 
   Widget _imgPlaceholder(ColorScheme c) => Container(
@@ -716,6 +778,11 @@ class _ManagerTournamentBookingsState extends State<ManagerTournamentBookings> {
                     final tName = tBookings.first['tournamentName'] as String? ?? tid;
                     final isExpanded = _expanded.contains(tid);
                     final allCancelled = tBookings.every((b) => b['status'] == 'cancelled');
+                    final hasPending = tBookings.any((b) => b['status'] == 'pending');
+                    final canDeleteAll = tBookings.every((b) {
+                      final s = b['status'] as String? ?? '';
+                      return s == 'cancelled' || s == 'completed' || s == 'rejected';
+                    });
 
                     return ModernCard(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -784,6 +851,49 @@ class _ManagerTournamentBookingsState extends State<ManagerTournamentBookings> {
                                             fontWeight: FontWeight.bold)),
                                   ),
                                 const SizedBox(width: 8),
+                                // Delete all button — when all done
+                                if (canDeleteAll)
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final confirmed = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                          title: const Row(children: [
+                                            Icon(Icons.delete_outline_rounded, color: Colors.red),
+                                            SizedBox(width: 10), Text('Delete Tournament'),
+                                          ]),
+                                          content: Text('Delete all bookings for "$tName"?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(ctx, false),
+                                              child: Text('No', style: TextStyle(color: Colors.grey[600])),
+                                            ),
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                                              onPressed: () => Navigator.pop(ctx, true),
+                                              child: const Text('Delete'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirmed == true) {
+                                        for (final b in tBookings) {
+                                          await BookingService.deleteBooking(b['id']);
+                                        }
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.delete_outline_rounded,
+                                          color: Colors.white, size: 16),
+                                    ),
+                                  ),
+                                const SizedBox(width: 4),
                                 Icon(
                                     isExpanded
                                         ? Icons.keyboard_arrow_up_rounded
@@ -792,6 +902,42 @@ class _ManagerTournamentBookingsState extends State<ManagerTournamentBookings> {
                               ]),
                             ),
                           ),
+                          // Accept All / Reject All — only when pending bookings exist
+                          if (hasPending)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+                              child: Row(children: [
+                                Expanded(child: GradientButton(
+                                  text: 'Accept All',
+                                  icon: Icons.check_circle_outline_rounded,
+                                  gradient: const LinearGradient(colors: [Color(0xFF34C759), Color(0xFF28A745)]),
+                                  height: 40,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  textStyle: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                  onPressed: () async {
+                                    final pending = tBookings.where((b) => b['status'] == 'pending').toList();
+                                    for (final b in pending) {
+                                      await BookingService.confirmBooking(b['id']);
+                                    }
+                                  },
+                                )),
+                                const SizedBox(width: 10),
+                                Expanded(child: GradientButton(
+                                  text: 'Reject All',
+                                  icon: Icons.cancel_outlined,
+                                  gradient: const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFDC2626)]),
+                                  height: 40,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  textStyle: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                  onPressed: () async {
+                                    final pending = tBookings.where((b) => b['status'] == 'pending').toList();
+                                    for (final b in pending) {
+                                      await BookingService.rejectBooking(b['id']);
+                                    }
+                                  },
+                                )),
+                              ]),
+                            ),
                           // Expanded booking rows
                           if (isExpanded)
                             ...tBookings.map((b) => _bookingRow(b, theme, colorScheme)),
@@ -805,7 +951,19 @@ class _ManagerTournamentBookingsState extends State<ManagerTournamentBookings> {
 
   Widget _bookingRow(Map<String, dynamic> b, ThemeData theme, ColorScheme colorScheme) {
     final imageUrls = (b['imageUrls'] as List?)?.cast<String>() ?? [];
-    final isCancelled = b['status'] == 'cancelled';
+    final status = b['status'] as String? ?? 'confirmed';
+    final isCancelled = status == 'cancelled';
+    final isPending = status == 'pending';
+    final isRejected = status == 'rejected';
+
+    Color statusColor;
+    String statusLabel;
+    if (isPending) { statusColor = AppTheme.warningColor; statusLabel = 'Pending'; }
+    else if (isRejected) { statusColor = AppTheme.errorColor; statusLabel = 'Rejected'; }
+    else if (isCancelled) { statusColor = AppTheme.errorColor; statusLabel = 'Cancelled'; }
+    else if (status == 'completed') { statusColor = AppTheme.primaryColor; statusLabel = 'Completed'; }
+    else { statusColor = AppTheme.successColor; statusLabel = 'Confirmed'; }
+
     return Container(
       decoration: BoxDecoration(
         border: Border(
@@ -830,12 +988,9 @@ class _ManagerTournamentBookingsState extends State<ManagerTournamentBookings> {
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(b['groundName'] ?? '',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-              _infoRow(Icons.person_outline,
-                  b['userName'] ?? b['userEmail'] ?? '', theme),
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              _infoRow(Icons.person_outline, b['userName'] ?? b['userEmail'] ?? '', theme),
               _infoRow(Icons.calendar_today_outlined, b['date'] ?? '', theme),
               _infoRow(Icons.access_time_outlined, b['slot'] ?? '', theme),
             ]),
@@ -846,21 +1001,22 @@ class _ManagerTournamentBookingsState extends State<ManagerTournamentBookings> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-                color: isCancelled
-                    ? AppTheme.errorColor.withValues(alpha: 0.15)
-                    : AppTheme.successColor.withValues(alpha: 0.15),
+                color: statusColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8)),
-            child: Text(
-              isCancelled ? 'Cancelled' : (b['status'] ?? 'confirmed'),
-              style: TextStyle(
-                  color: isCancelled
-                      ? AppTheme.errorColor
-                      : AppTheme.successColor,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold),
-            ),
+            child: Text(statusLabel,
+                style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
           ),
         ),
+        // Chat button — only for real user bookings
+        if ((b['userId'] as String? ?? '').isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline_rounded,
+                color: AppTheme.primaryColor, size: 20),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => BookingChatScreen(
+                  bookingId: b['id'], booking: b, isManager: true),
+            )),
+          ),
       ]),
     );
   }

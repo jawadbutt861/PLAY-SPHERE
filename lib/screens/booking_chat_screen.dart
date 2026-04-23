@@ -21,6 +21,9 @@ class BookingChatScreen extends StatefulWidget {
     required this.isManager,
   });
 
+  /// chatId = userId_managerId — same pair ka hamesha ek hi chat
+  static String chatId(String userId, String managerId) => '${userId}_$managerId';
+
   @override
   State<BookingChatScreen> createState() => _BookingChatScreenState();
 }
@@ -42,8 +45,18 @@ class _BookingChatScreenState extends State<BookingChatScreen> {
   late final Stream<Map<String, dynamic>> _stableBookingStream;
   late final Stream<Map<String, dynamic>> _stablePaymentStream;
 
+  /// userId_managerId — ek user aur manager ke beech hamesha ek hi chat
+  String get _chatId {
+    final managerId = widget.booking['managerId'] as String? ?? '';
+    // userId: booking map se lo, fallback current user
+    final userId = (widget.booking['userId'] as String?)?.isNotEmpty == true
+        ? widget.booking['userId'] as String
+        : (_uid ?? '');
+    return '${userId}_$managerId';
+  }
+
   CollectionReference get _chatCol =>
-      _db.collection('bookings').doc(widget.bookingId).collection('chat');
+      _db.collection('chats').doc(_chatId).collection('messages');
 
   @override
   void initState() {
@@ -54,31 +67,16 @@ class _BookingChatScreenState extends State<BookingChatScreen> {
         .snapshots()
         .map((s) => s.exists ? {...s.data()!, 'id': s.id} : widget.booking);
 
-    // Payment stream — resolve managerId from booking then listen to manager's paymentInfo
-    _stablePaymentStream = _db
-        .collection('bookings')
-        .doc(widget.bookingId)
-        .snapshots()
-        .asyncExpand((bookingSnap) {
-          final data = bookingSnap.exists ? bookingSnap.data()! : <String, dynamic>{};
-          // Try widget.booking first, then Firestore booking doc
-          final managerId = (data['managerId'] as String?)?.isNotEmpty == true
-              ? data['managerId'] as String
-              : (widget.booking['managerId'] as String? ?? '');
-
-          if (managerId.isEmpty) return Stream.value(<String, dynamic>{});
-
-          return _db
-              .collection('users')
-              .doc(managerId)
-              .snapshots()
-              .map((s) {
-                if (!s.exists) return <String, dynamic>{};
-                final pi = s.data()?['paymentInfo'];
-                if (pi is Map) return Map<String, dynamic>.from(pi);
-                return <String, dynamic>{};
-              });
-        });
+    // Payment stream — managerId se manager ki paymentInfo
+    final managerId = widget.booking['managerId'] as String? ?? '';
+    _stablePaymentStream = managerId.isNotEmpty
+        ? _db.collection('users').doc(managerId).snapshots().map((s) {
+            if (!s.exists) return <String, dynamic>{};
+            final pi = s.data()?['paymentInfo'];
+            if (pi is Map) return Map<String, dynamic>.from(pi);
+            return <String, dynamic>{};
+          })
+        : Stream.value(<String, dynamic>{});
   }
 
   Future<void> _pickAndSendImage() async {
@@ -134,7 +132,14 @@ class _BookingChatScreenState extends State<BookingChatScreen> {
       });
       _msgCtrl.clear();
       _scrollToBottom();
-    } catch (_) {
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed to send: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -171,7 +176,6 @@ class _BookingChatScreenState extends State<BookingChatScreen> {
       'isSystem': true,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    if (mounted) Navigator.pop(context);
   }
 
   @override
@@ -195,22 +199,28 @@ class _BookingChatScreenState extends State<BookingChatScreen> {
           final b = snap.data ?? widget.booking;
           final status = b['status'] as String? ?? 'pending';
 
-          return Column(
+          return Stack(
             children: [
-              _buildOrderBanner(b, status),
-              if (widget.isManager && status == 'pending')
-                _buildManagerActions(),
-              // ── Pinned Payment Card (Binance style) ──
-              StreamBuilder<Map<String, dynamic>>(
-                stream: _stablePaymentStream,
-                builder: (context, piSnap) {
-                  final paymentInfo = piSnap.data ?? {};
-                  return _buildPinnedPaymentCard(paymentInfo);
-                },
+              // WhatsApp-style subtle background pattern
+              Positioned.fill(
+                child: CustomPaint(painter: _ChatBgPainter()),
               ),
-              Expanded(child: _buildMessages(chatBg)),
-              if (status != 'rejected' && status != 'cancelled')
-                _buildInputBar(),
+              Column(
+                children: [
+                  _buildOrderBanner(b, status),
+                  if (widget.isManager && status == 'pending')
+                    _buildManagerActions(),
+                  StreamBuilder<Map<String, dynamic>>(
+                    stream: _stablePaymentStream,
+                    builder: (context, piSnap) {
+                      final paymentInfo = piSnap.data ?? {};
+                      return _buildPinnedPaymentCard(paymentInfo);
+                    },
+                  ),
+                  Expanded(child: _buildMessages(chatBg)),
+                  _buildInputBar(),
+                ],
+              ),
             ],
           );
         },
@@ -219,6 +229,19 @@ class _BookingChatScreenState extends State<BookingChatScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final otherName = widget.isManager 
+        ? (widget.booking['userName'] as String? ?? widget.booking['userEmail'] as String? ?? 'User')
+        : (widget.booking['groundName'] as String? ?? 'Manager');
+    
+    // Avatar initials
+    String initials = '';
+    final words = otherName.split(' ');
+    if (words.isNotEmpty) {
+      initials = words.length > 1 
+          ? '${words[0][0]}${words[1][0]}'.toUpperCase()
+          : words[0].substring(0, words[0].length > 1 ? 2 : 1).toUpperCase();
+    }
+
     return PreferredSize(
       preferredSize: const Size.fromHeight(kToolbarHeight),
       child: Container(
@@ -230,35 +253,33 @@ class _BookingChatScreenState extends State<BookingChatScreen> {
               icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
-            // Avatar
+            // Avatar with initials
             CircleAvatar(
               radius: 20,
-              backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.3),
-              child: Icon(
-                widget.isManager ? Icons.person_rounded : Icons.stadium_rounded,
-                color: AppTheme.primaryColor,
-                size: 20,
-              ),
+              backgroundColor: AppTheme.primaryColor,
+              child: Text(initials,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14)),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    widget.isManager ? 'Booking Request' : widget.booking['groundName'] ?? 'Order Chat',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16),
-                  ),
-                  Text(
-                    'Order #${widget.bookingId.substring(0, 6).toUpperCase()}',
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 12),
-                  ),
+                  Text(otherName,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  Text('Tap for booking info',
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 12)),
                 ],
               ),
             ),
@@ -708,131 +729,154 @@ class _BookingChatScreenState extends State<BookingChatScreen> {
   Widget _buildBubble(String text, String sender, String time, bool isMe,
       bool isManager, {String? imageUrl, bool showName = true, bool isGrouped = false}) {
 
-    // Clear color distinction:
-    // My messages (right) — dark green WhatsApp style
-    // Manager messages (left) — dark blue/teal
-    // Other user messages (left) — dark grey
-    const myBubble    = Color(0xFF005C4B); // WhatsApp sent — dark green
-    const managerBubble = Color(0xFF1A3A4A); // Manager — dark teal/blue
-    const userBubble  = Color(0xFF1F2C34); // Other user — dark grey
+    // WhatsApp color scheme
+    const myBubble      = Color(0xFF005C4B); // sent — dark green
+    const theirBubble   = Color(0xFF1F2C34); // received — dark grey
 
-    final bubbleColor = isMe ? myBubble : (isManager ? managerBubble : userBubble);
+    final bubbleColor = isMe ? myBubble : theirBubble;
+    final nameColor   = isManager ? const Color(0xFFFF9500) : const Color(0xFF00BFA5);
 
-    // Name color
-    final nameColor = isManager ? const Color(0xFFFF9500) : AppTheme.primaryColor;
-
-    final borderRadius = BorderRadius.only(
-      topLeft: Radius.circular(isMe ? 12 : (isGrouped ? 12 : 4)),
-      topRight: Radius.circular(isMe ? (isGrouped ? 12 : 4) : 12),
-      bottomLeft: const Radius.circular(12),
-      bottomRight: const Radius.circular(12),
-    );
+    // WhatsApp-style border radius with tail on first message
+    final borderRadius = isMe
+        ? BorderRadius.only(
+            topLeft:     const Radius.circular(18),
+            topRight:    Radius.circular(isGrouped ? 18 : 4),
+            bottomLeft:  const Radius.circular(18),
+            bottomRight: const Radius.circular(18),
+          )
+        : BorderRadius.only(
+            topLeft:     Radius.circular(isGrouped ? 18 : 4),
+            topRight:    const Radius.circular(18),
+            bottomLeft:  const Radius.circular(18),
+            bottomRight: const Radius.circular(18),
+          );
 
     return Padding(
-      padding: EdgeInsets.only(bottom: isGrouped ? 2 : 6, top: isGrouped ? 0 : 2),
-      child: Align(
-        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          margin: EdgeInsets.only(left: isMe ? 60 : 8, right: isMe ? 8 : 60),
-          padding: EdgeInsets.only(
-            left: imageUrl != null ? 4 : 10,
-            right: imageUrl != null ? 4 : 10,
-            top: imageUrl != null ? 4 : 7,
-            bottom: 5,
-          ),
-          decoration: BoxDecoration(
-            color: bubbleColor,
-            borderRadius: borderRadius,
-            // Subtle left border for received messages
-            border: isMe ? null : Border(
-              left: BorderSide(color: nameColor.withValues(alpha: 0.6), width: 3),
+      padding: EdgeInsets.only(
+        bottom: isGrouped ? 2 : 4,
+        top: isGrouped ? 0 : 2,
+        left: isMe ? 60 : 8,
+        right: isMe ? 8 : 60,
+      ),
+      child: Row(
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Tail for first message in group (received only)
+          if (!isMe && !isGrouped)
+            CustomPaint(
+              painter: _BubbleTailPainter(color: theirBubble, isMe: false),
+              child: const SizedBox(width: 8, height: 8),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Sender name — only first bubble in a group, only for received
-              if (!isMe && showName) ...[
-                Row(children: [
-                  Text(
-                    sender,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: nameColor,
-                    ),
+          if (!isMe && isGrouped) const SizedBox(width: 8),
+          Flexible(
+            child: Container(
+              padding: EdgeInsets.only(
+                left: imageUrl != null ? 3 : 10,
+                right: imageUrl != null ? 3 : 10,
+                top: imageUrl != null ? 3 : 7,
+                bottom: 6,
+              ),
+              decoration: BoxDecoration(
+                color: bubbleColor,
+                borderRadius: borderRadius,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
                   ),
-                  if (isManager) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF9500).withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text('Manager',
-                          style: TextStyle(
-                              fontSize: 9,
-                              color: Color(0xFFFF9500),
-                              fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ]),
-                const SizedBox(height: 3),
-              ],
-              // Image
-              if (imageUrl != null)
-                GestureDetector(
-                  onTap: () => _viewImage(imageUrl),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      imageUrl,
-                      width: 220,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (_, child, progress) => progress == null
-                          ? child
-                          : Container(
-                              width: 220, height: 140,
-                              color: Colors.black26,
-                              child: const Center(
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppTheme.primaryColor))),
-                      errorBuilder: (_, _, _) =>
-                          const Icon(Icons.broken_image, color: Colors.white54),
-                    ),
-                  ),
-                ),
-              if (imageUrl != null && text.isNotEmpty) const SizedBox(height: 4),
-              // Text + time
-              if (text.isNotEmpty) ...[
-                Text(text,
-                    style: const TextStyle(color: Colors.white, fontSize: 14)),
-                const SizedBox(height: 2),
-              ],
-              // Time row (always at bottom right)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (text.isEmpty) const SizedBox(width: 4),
-                  Text(time,
-                      style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.white.withValues(alpha: 0.5))),
-                  if (isMe) ...[
-                    const SizedBox(width: 3),
-                    Icon(Icons.done_all_rounded,
-                        size: 13,
-                        color: AppTheme.primaryColor.withValues(alpha: 0.8)),
-                  ],
                 ],
               ),
-            ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Sender name badge (received, first in group)
+                  if (!isMe && showName) ...[
+                    Row(children: [
+                      Text(sender,
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: nameColor)),
+                      if (isManager) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF9500).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('Manager',
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  color: Color(0xFFFF9500),
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ]),
+                    const SizedBox(height: 3),
+                  ],
+                  // Image
+                  if (imageUrl != null)
+                    GestureDetector(
+                      onTap: () => _viewImage(imageUrl),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          imageUrl,
+                          width: 220,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (_, child, progress) => progress == null
+                              ? child
+                              : Container(
+                                  width: 220, height: 140,
+                                  color: Colors.black26,
+                                  child: const Center(
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: AppTheme.primaryColor))),
+                          errorBuilder: (_, _, _) =>
+                              const Icon(Icons.broken_image, color: Colors.white54),
+                        ),
+                      ),
+                    ),
+                  if (imageUrl != null && text.isNotEmpty) const SizedBox(height: 4),
+                  // Text
+                  if (text.isNotEmpty)
+                    Text(text,
+                        style: const TextStyle(color: Colors.white, fontSize: 14.5, height: 1.3)),
+                  const SizedBox(height: 2),
+                  // Time + ticks row — bottom right
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(time,
+                          style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.white.withValues(alpha: 0.5))),
+                      if (isMe) ...[
+                        const SizedBox(width: 4),
+                        Icon(Icons.done_all_rounded,
+                            size: 14,
+                            color: const Color(0xFF53BDEB)),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
+          // Tail for sent messages
+          if (isMe && !isGrouped)
+            CustomPaint(
+              painter: _BubbleTailPainter(color: myBubble, isMe: true),
+              child: const SizedBox(width: 8, height: 8),
+            ),
+          if (isMe && isGrouped) const SizedBox(width: 8),
+        ],
       ),
     );
   }
@@ -853,77 +897,144 @@ class _BookingChatScreenState extends State<BookingChatScreen> {
   }
 
   Widget _buildInputBar() {
+    final hasText = _msgCtrl.text.trim().isNotEmpty;
     return Container(
       color: const Color(0xFF1F2C34),
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
       child: SafeArea(
         top: false,
-        child: Row(children: [
-          // Image button
-          GestureDetector(
-            onTap: (_sending || _uploadingImage) ? null : _pickAndSendImage,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(
-                color: Color(0xFF2A3942),
-                shape: BoxShape.circle,
-              ),
-              child: _uploadingImage
-                  ? const SizedBox(
-                      width: 20, height: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppTheme.primaryColor))
-                  : Icon(Icons.attach_file_rounded,
-                      color: Colors.white.withValues(alpha: 0.7), size: 22),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Text field
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF2A3942),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: TextField(
-                controller: _msgCtrl,
-                style: const TextStyle(color: Colors.white, fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: 'Message',
-                  hintStyle: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.4), fontSize: 15),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // Attach button
+            GestureDetector(
+              onTap: (_sending || _uploadingImage) ? null : _pickAndSendImage,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 2),
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF2A3942),
+                  shape: BoxShape.circle,
                 ),
-                maxLines: null,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _send(),
-                onChanged: (_) => setState(() {}),
+                child: _uploadingImage
+                    ? const SizedBox(
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppTheme.primaryColor))
+                    : Icon(Icons.attach_file_rounded,
+                        color: Colors.white.withValues(alpha: 0.7), size: 22),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          // Send button
-          GestureDetector(
-            onTap: _sending ? null : _send,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(
-                color: AppTheme.primaryColor,
-                shape: BoxShape.circle,
+            const SizedBox(width: 8),
+            // Text field — rounded pill like WhatsApp
+            Expanded(
+              child: Container(
+                constraints: const BoxConstraints(maxHeight: 120),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A3942),
+                  borderRadius: BorderRadius.circular(26),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        controller: _msgCtrl,
+                        style: const TextStyle(color: Colors.white, fontSize: 15),
+                        decoration: InputDecoration(
+                          hintText: 'Message',
+                          hintStyle: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.4),
+                              fontSize: 15),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        maxLines: null,
+                        textInputAction: TextInputAction.newline,
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
               ),
-              child: _sending
-                  ? const SizedBox(
-                      width: 20, height: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.send_rounded,
-                      color: Colors.white, size: 20),
             ),
-          ),
-        ]),
+            const SizedBox(width: 8),
+            // Send / Mic button
+            GestureDetector(
+              onTap: _sending ? null : _send,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: hasText ? AppTheme.primaryColor : const Color(0xFF00A884),
+                  shape: BoxShape.circle,
+                ),
+                child: _sending
+                    ? const SizedBox(
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : Icon(
+                        hasText ? Icons.send_rounded : Icons.mic_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+// ── WhatsApp-style subtle background pattern ──────────────
+class _ChatBgPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF1A2530).withValues(alpha: 0.6)
+      ..style = PaintingStyle.fill;
+
+    // Subtle dot grid pattern
+    const spacing = 28.0;
+    for (double x = 0; x < size.width; x += spacing) {
+      for (double y = 0; y < size.height; y += spacing) {
+        canvas.drawCircle(Offset(x, y), 1.2, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ChatBgPainter old) => false;
+}
+
+// ── Bubble tail painter (WhatsApp style) ─────────────────
+class _BubbleTailPainter extends CustomPainter {
+  final Color color;
+  final bool isMe;
+  const _BubbleTailPainter({required this.color, required this.isMe});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color..style = PaintingStyle.fill;
+    final path = Path();
+    if (isMe) {
+      path.moveTo(0, 0);
+      path.lineTo(size.width, 0);
+      path.lineTo(0, size.height);
+      path.close();
+    } else {
+      path.moveTo(0, 0);
+      path.lineTo(size.width, 0);
+      path.lineTo(size.width, size.height);
+      path.close();
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_BubbleTailPainter old) => old.color != color || old.isMe != isMe;
 }

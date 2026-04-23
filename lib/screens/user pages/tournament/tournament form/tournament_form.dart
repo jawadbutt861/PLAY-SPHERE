@@ -168,7 +168,7 @@ class _TournamentFormState extends State<TournamentForm> {
             'ground': ground,
             'date': dateStr,
             'slot': slot,
-            'payment': selectedPayment,
+            'payment': 'Pay at Venue',
             'tournamentId': name.text,
             'isTournament': true,
           });
@@ -180,7 +180,7 @@ class _TournamentFormState extends State<TournamentForm> {
             'ground': ground,
             'date': dateStr,
             'slot': slot,
-            'payment': selectedPayment,
+            'payment': 'Pay at Venue',
             'tournamentId': name.text,
             'isTournament': true,
             'status': 'confirmed',
@@ -300,8 +300,8 @@ class _TournamentFormState extends State<TournamentForm> {
         final newIdx = fixtures.length - 1;
         lCurrent.add(newIdx);
         // WB R1 losers go here
-        fixtures[wbR1[i]].add('${newIdx}:loser:team1');
-        fixtures[wbR1[i + 1]].add('${newIdx}:loser:team2');
+        fixtures[wbR1[i]].add('$newIdx:loser:team1');
+        fixtures[wbR1[i + 1]].add('$newIdx:loser:team2');
       }
     }
 
@@ -450,8 +450,8 @@ class _TournamentFormState extends State<TournamentForm> {
           'result': null,
           'winner': null,
           'createdAt': DateTime.now().toIso8601String(),
-          if (nextWinnerSlot != null) 'nextWinnerSlot': nextWinnerSlot,
-          if (nextLoserSlot != null) 'nextLoserSlot': nextLoserSlot,
+          'nextWinnerSlot': nextWinnerSlot,
+          'nextLoserSlot': nextLoserSlot,
         });
       }
     }
@@ -516,7 +516,6 @@ class _TournamentFormState extends State<TournamentForm> {
       _fetchBookedSlotsForGrounds();
       setState(() => currentStep++);
     } else if (currentStep == 3) {
-      // Slots step mein enter karte waqt Firestore se booked slots fetch karo
       await _fetchBookedSlotsForGrounds();
       if (!mounted) return;
       bool allHaveSlots = selectedGrounds.every((g) {
@@ -526,12 +525,6 @@ class _TournamentFormState extends State<TournamentForm> {
       });
       if (!allHaveSlots) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Select slots for each selected ground")));
-        return;
-      }
-      setState(() => currentStep++);
-    } else if (currentStep == 4) {
-      if (selectedPayment == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select a payment method")));
         return;
       }
 
@@ -591,7 +584,7 @@ class _TournamentFormState extends State<TournamentForm> {
             userName: user?.displayName ?? user?.email ?? '',
             date: bg['date'] ?? '',
             slot: bg['slot'] ?? '',
-            payment: bg['payment'] ?? selectedPayment ?? '',
+            payment: bg['payment'] ?? 'Pay at Venue',
             imageUrls: (ground['imageUrls'] as List?)?.cast<String>() ?? [],
             tournamentId: firestoreId,
             tournamentName: name.text,
@@ -616,7 +609,7 @@ class _TournamentFormState extends State<TournamentForm> {
         if (mounted) {
           setState(() => _isSubmitting = false);
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('Tournament created! Payment via $selectedPayment')));
+              content: const Text('Tournament created successfully!')));
           Navigator.pop(context, tournamentData);
         }
       } catch (e) {
@@ -1009,13 +1002,13 @@ class _TournamentFormState extends State<TournamentForm> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 elevation: 4,
                               ),
-                              child: _isSubmitting && currentStep == 4
+                              child: _isSubmitting && currentStep == 3
                                   ? const SizedBox(
                                       width: 20, height: 20,
                                       child: CircularProgressIndicator(
                                           strokeWidth: 2, color: Colors.white))
                                   : Text(
-                                      currentStep == 4 ? "Create Tournament" : "Next",
+                                      currentStep == 3 ? "Create Tournament" : "Next",
                                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                     ),
                             ),
@@ -1189,58 +1182,6 @@ class _TournamentFormState extends State<TournamentForm> {
                       ),
                       Step(title: const Text("Grounds"), isActive: currentStep >= 2, content: _groundsSelectionStep()),
                       Step(title: const Text("Slots"), isActive: currentStep >= 3, content: _slotsSelectionStep()),
-                      Step(
-                        title: const Text("Payment"),
-                        isActive: currentStep >= 4,
-                        content: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Text(
-                              "Select Payment Method", 
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            Card(
-                              elevation: 2,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  ListTile(
-                                    dense: true,
-                                    leading: RadioGroup<String>(
-                                      groupValue: selectedPayment,
-                                      onChanged: (v) => setState(() => selectedPayment = v),
-                                      child: Radio<String>(
-                                        value: "JazzCash",
-                                        activeColor: const Color(0xFF00D9FF),
-                                      ),
-                                    ),
-                                    title: const Text("JazzCash", style: TextStyle(fontSize: 14)),
-                                    subtitle: const Text("Mobile wallet payment", style: TextStyle(fontSize: 12)),
-                                    onTap: () => setState(() => selectedPayment = "JazzCash"),
-                                  ),
-                                  const Divider(height: 1),
-                                  ListTile(
-                                    dense: true,
-                                    leading: RadioGroup<String>(
-                                      groupValue: selectedPayment,
-                                      onChanged: (v) => setState(() => selectedPayment = v),
-                                      child: Radio<String>(
-                                        value: "EasyPaisa",
-                                        activeColor: const Color(0xFF00D9FF),
-                                      ),
-                                    ),
-                                    title: const Text("EasyPaisa", style: TextStyle(fontSize: 14)),
-                                    subtitle: const Text("Mobile wallet payment", style: TextStyle(fontSize: 12)),
-                                    onTap: () => setState(() => selectedPayment = "EasyPaisa"),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),

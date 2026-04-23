@@ -160,7 +160,7 @@ class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
               tabs: [
                 Tab(
                   icon: const Icon(Icons.event_available_rounded),
-                  text: 'Bookings (${regularBookings.length})',
+                  text: 'Regular Bookings (${regularBookings.length})',
                 ),
                 Tab(
                   icon: const Icon(Icons.emoji_events_rounded),
@@ -330,36 +330,132 @@ class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
                   ]),
                 ),
               ),
-              // Expanded booking cards
-              if (isExpanded)
-                ...tBookings.map((b) {
-                  final bStatus = b['status'] as String? ?? '';
-                  final canDelete = bStatus == 'cancelled' || bStatus == 'completed';
-                  return Stack(
-                    children: [
-                      _bookingCard(b, canCancel: false),
-                      if (canDelete)
-                        Positioned(
-                          top: 6, right: 6,
-                          child: GestureDetector(
-                            onTap: () => _deleteBooking(b),
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                  color: Colors.red, shape: BoxShape.circle),
-                              child: const Icon(Icons.close,
-                                  color: Colors.white, size: 14),
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                }),
+              // Expanded — per ground grouped cards
+              if (isExpanded) ..._buildGroundCards(tBookings, theme, colorScheme),
             ],
           ),
         );
       }).toList(),
     );
+  }
+
+  // ── Per-ground summary card inside tournament ──────────
+  List<Widget> _buildGroundCards(List<Map<String, dynamic>> bookings,
+      ThemeData theme, ColorScheme colorScheme) {
+    // Group by groundName
+    final groundMap = <String, List<Map<String, dynamic>>>{};
+    for (final b in bookings) {
+      final gName = b['groundName'] as String? ?? 'Unknown Ground';
+      groundMap.putIfAbsent(gName, () => []).add(b);
+    }
+
+    return groundMap.entries.map((entry) {
+      final groundName = entry.key;
+      final slots = entry.value;
+      final first = slots.first;
+      final imageUrls = (first['imageUrls'] as List?)?.cast<String>() ?? [];
+      final category = first['groundCategory'] as String? ?? '';
+
+      // Total amount
+      final totalAmount = slots.fold<int>(
+          0, (sum, b) => sum + ((b['price'] as num?)?.toInt() ?? 0));
+
+      // Overall status — if any pending show pending, else majority
+      String overallStatus;
+      if (slots.any((b) => b['status'] == 'pending')) {
+        overallStatus = 'pending';
+      } else if (slots.any((b) => b['status'] == 'confirmed')) {
+        overallStatus = 'confirmed';
+      } else if (slots.every((b) => b['status'] == 'completed')) {
+        overallStatus = 'completed';
+      } else if (slots.every((b) => b['status'] == 'cancelled')) {
+        overallStatus = 'cancelled';
+      } else if (slots.every((b) => b['status'] == 'rejected')) {
+        overallStatus = 'rejected';
+      } else {
+        overallStatus = first['status'] as String? ?? 'confirmed';
+      }
+
+      Color statusColor;
+      String statusLabel;
+      if (overallStatus == 'pending') { statusColor = AppTheme.warningColor; statusLabel = 'Pending'; }
+      else if (overallStatus == 'rejected') { statusColor = AppTheme.errorColor; statusLabel = 'Rejected'; }
+      else if (overallStatus == 'cancelled') { statusColor = AppTheme.errorColor; statusLabel = 'Cancelled'; }
+      else if (overallStatus == 'completed') { statusColor = AppTheme.primaryColor; statusLabel = 'Completed'; }
+      else { statusColor = AppTheme.successColor; statusLabel = 'Confirmed'; }
+
+      return Container(
+        decoration: BoxDecoration(
+          border: Border(
+              top: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.4))),
+        ),
+        child: Row(children: [
+          // Ground image
+          ClipRRect(
+            child: SizedBox(
+              width: 80,
+              height: 90,
+              child: imageUrls.isNotEmpty
+                  ? Image.network(imageUrls.first, fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _placeholder(colorScheme))
+                  : _placeholder(colorScheme),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                // Ground name + status
+                Row(children: [
+                  Expanded(
+                    child: Text(groundName,
+                        style: theme.textTheme.titleSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(statusLabel,
+                        style: TextStyle(
+                            color: statusColor, fontSize: 9, fontWeight: FontWeight.bold)),
+                  ),
+                ]),
+                const SizedBox(height: 3),
+                if (category.isNotEmpty)
+                  _infoRow(Icons.category_outlined, category, theme),
+                _infoRow(Icons.event_repeat_rounded,
+                    '${slots.length} slot${slots.length == 1 ? '' : 's'}', theme),
+                if (totalAmount > 0)
+                  _infoRow(Icons.attach_money_rounded,
+                      'Total: PKR $totalAmount', theme,
+                      color: const Color(0xFF34C759)),
+              ]),
+            ),
+          ),
+          // Chat button — first slot ka booking id use karo
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline_rounded,
+                color: AppTheme.primaryColor, size: 20),
+            onPressed: () {
+              final id = first['id'] as String? ?? '';
+              if (id.isEmpty) return;
+              Navigator.push(context, MaterialPageRoute(
+                builder: (_) => BookingChatScreen(
+                  bookingId: id,
+                  booking: first,
+                  isManager: false,
+                ),
+              ));
+            },
+          ),
+        ]),
+      );
+    }).toList();
   }
 
   // ── Single booking card ─────────────────────────────────
@@ -467,6 +563,15 @@ class _BookedState extends State<Booked> with SingleTickerProviderStateMixin {
             child: IconButton(
               icon: const Icon(Icons.cancel_outlined, color: Colors.red),
               onPressed: () => _confirmCancel(booking),
+            ),
+          ),
+        // Delete button for rejected or cancelled bookings
+        if (isRejected || isCancelled)
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: IconButton(
+              icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+              onPressed: () => _deleteBooking(booking),
             ),
           ),
         // Chat button

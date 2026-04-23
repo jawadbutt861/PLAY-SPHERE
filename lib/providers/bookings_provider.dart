@@ -35,8 +35,8 @@ class BookingsProvider extends ChangeNotifier {
         final now = DateTime.now();
         _bookings = bookings.where((b) {
           final status = b['status'] as String? ?? '';
-          // cancelled aur rejected — history mein jayenge, active list mein nahi
-          if (status == 'cancelled' || status == 'rejected') return false;
+          // cancelled aur rejected — dikhao, sirf delete karne par hatenge
+          if (status == 'cancelled' || status == 'rejected') return true;
           if (b['isTournament'] == true) return true;
           // pending bookings hamesha dikhao
           if (status == 'pending') return true;

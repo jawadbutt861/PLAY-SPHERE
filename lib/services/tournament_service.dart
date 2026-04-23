@@ -258,7 +258,7 @@ class TournamentService {
       await docRef.update({
         'matches': matches,
         'pointsTable': pointsTable,
-        if (winner != null) 'currentLeader': winner,
+        'currentLeader': winner,
         // Only mark completed if final also done (or not round robin)
         if (allDone && !finalAdded && format != 'Round Robin') 'status': 'completed',
         if (allDone && !finalAdded && format == 'Round Robin') 'status': 'completed',
